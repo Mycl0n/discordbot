@@ -43,6 +43,21 @@ module.exports = {
       const modifier = player.modifiers[ability] || 0;
       const total = d20 + modifier;
 
+      // Award Modifier XP
+      const modXpGain = d20 === 20 ? 10 : 5;
+      if (!player.modifierXp) player.modifierXp = {};
+      player.modifierXp[ability] = (player.modifierXp[ability] || 0) + modXpGain;
+
+      // Check for modifier level up
+      const conVal = player.modifiers[ability] || 0;
+      const modXpNeeded = 30 + (conVal * 10);
+      let modLevelUpText = '';
+      if (player.modifierXp[ability] >= modXpNeeded) {
+        player.modifierXp[ability] -= modXpNeeded;
+        player.modifiers[ability] = conVal + 1;
+        modLevelUpText = `\n\n🌟 **MODİFİKATÖR GELİŞTİ!**\n**${player.charName}** adlı karakterin **${ability}** modifikatörü kullanıldıkça gelişti! Yeni değeri: **+${player.modifiers[ability]}**!`;
+      }
+
       let rollResultText = `🎲 **${player.charName}** (${player.class}) **${ability}** zarı attı:\n`;
       rollResultText += `**Doğal Zar:** ${d20} | **Modifikatör:** ${modifier >= 0 ? '+' : ''}${modifier}\n`;
       rollResultText += `🏆 **Toplam Sonuç: ${total}**\n\n`;
@@ -52,6 +67,8 @@ module.exports = {
       } else if (d20 === 1) {
         rollResultText += '💀 **KRİTİK BAŞARISIZLIK! (Natural 1)**';
       }
+
+      rollResultText += modLevelUpText;
 
       const rollEmbed = new EmbedBuilder()
         .setColor(d20 === 20 ? '#57F287' : d20 === 1 ? '#ED4245' : '#5865F2')
@@ -114,9 +131,18 @@ module.exports = {
 
           player.maxHp = (player.maxHp || 20) + hpIncrease;
           player.hp = player.maxHp;
-          player.modifiers[ability] = (player.modifiers[ability] || 0) + 1;
 
-          levelUpMessage = `\n\n🌟 **TEBRİKLER! SEVİYE ATLADI!** 🌟\n**${player.charName}** artık **Seviye ${player.level}**! Maksimum Canı **${player.maxHp}** HP'ye yükseldi ve **${ability}** modifikatörü **+${player.modifiers[ability]}** oldu!`;
+          // Check if any spells are unlocked at this level
+          const dndCommand = client.commands.get('dnd');
+          const classAbilities = dndCommand.CLASS_ABILITIES?.[player.class] || {};
+          const levelAbilities = classAbilities[player.level] || [];
+          
+          let newSpellMessage = '';
+          if (levelAbilities.length > 0) {
+            newSpellMessage = `\n🔮 **Yeni Yetenek(ler) Açıldı:** ` + levelAbilities.map(a => `**${a.name}** (*${a.desc}*)`).join(', ');
+          }
+
+          levelUpMessage = `\n\n🌟 **TEBRİKLER! SEVİYE ATLADI!** 🌟\n**${player.charName}** artık **Seviye ${player.level}**! Maksimum Canı **${player.maxHp}** HP'ye yükseldi!${newSpellMessage}`;
         }
 
         // Check if the AI wants another roll check

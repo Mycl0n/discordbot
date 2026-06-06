@@ -16,9 +16,183 @@ function formatCoins(totalBronze) {
   return parts.join(' ');
 }
 
+const CLASS_ABILITIES = {
+  'Savaşçı': {
+    1: [
+      { name: 'İkinci Soluk', type: 'short_rest', desc: '1d10 + Seviye can yeniler.' },
+      { name: 'Savaş Narası', type: 'short_rest', desc: 'Fazladan bir hamle yapmanızı sağlar.' }
+    ],
+    2: [
+      { name: 'Siper Alma', type: 'turn', cooldown: 2, desc: 'Bir sonraki gelen saldırıyı savuşturur.' }
+    ],
+    3: [
+      { name: 'Kritik Darbe', type: 'long_rest', desc: 'Düşmana çok ağır hasar veren güçlü vuruş.' }
+    ]
+  },
+  'Büyücü': {
+    1: [
+      { name: 'Işık', type: 'infinite', desc: 'Karanlık bölgeleri aydınlatan sihirli küre yaratır.' },
+      { name: 'Alev Oku', type: 'turn', cooldown: 2, desc: 'Hedefe alev fırlatır (1d10 hasar).' },
+      { name: 'Kalkan', type: 'turn', cooldown: 3, desc: 'Savunmayı geçici olarak büyük ölçüde artırır.' }
+    ],
+    2: [
+      { name: 'Sihirli Füze', type: 'long_rest', desc: 'Iskalamayan sihirli oklar fırlatır (3x 1d4+1).' }
+    ],
+    3: [
+      { name: 'Alev Topu', type: 'long_rest', desc: 'Geniş bir alandaki tüm düşmanları yakıp yıkar.' }
+    ]
+  },
+  'Hırsız': {
+    1: [
+      { name: 'Kurnaz Eylem', type: 'infinite', desc: 'Savaşta hızlıca saklanmanızı veya kaçmanızı sağlar.' },
+      { name: 'Sinsi Saldırı', type: 'turn', cooldown: 2, desc: 'Fark edilmeden yapılan vuruşlara büyük hasar ekler.' }
+    ],
+    2: [
+      { name: 'Zehirli Hançer', type: 'short_rest', desc: 'Hedefi zehirleyerek tur başına hasar verir.' }
+    ],
+    3: [
+      { name: 'Gölge Adımı', type: 'long_rest', desc: 'Gölgelerin arasından ışınlanıp görünmez olursunuz.' }
+    ]
+  },
+  'Rahip': {
+    1: [
+      { name: 'Rehberlik', type: 'infinite', desc: 'Bir sonraki yetenek zarına +1d4 rehberlik ekler.' },
+      { name: 'Kutsama', type: 'turn', cooldown: 3, desc: 'Dostların zarlarına kutsal güç ekler.' },
+      { name: 'Yaraları İyileştir', type: 'short_rest', desc: 'Dokunarak bir dostun canını yeniler.' }
+    ],
+    2: [
+      { name: 'İlahi Tarama', type: 'infinite', desc: 'Etraftaki kötülükleri veya kutsal varlıkları sezer.' }
+    ],
+    3: [
+      { name: 'Kutsal Ateş', type: 'long_rest', desc: 'Gökyüzünden ilahi bir ışık sütunu indirerek yakar.' }
+    ]
+  },
+  'Korucu': {
+    1: [
+      { name: 'Keskin Göz', type: 'infinite', desc: 'Dikkat ve algı testlerinde üstünlük sağlar.' },
+      { name: 'Avcının Markası', type: 'turn', cooldown: 2, desc: 'Hedeflenen düşmana yapılan vuruşlara hasar ekler.' }
+    ],
+    2: [
+      { name: 'Çoklu Atış', type: 'short_rest', desc: 'Aynı anda birden fazla düşmana ok fırlatır.' }
+    ],
+    3: [
+      { name: 'Hayvan Dostu', type: 'long_rest', desc: 'Mücadelede size yardım edecek vahşi hayvan çağırır.' }
+    ]
+  },
+  'Paladin': {
+    1: [
+      { name: 'Kutsal Işık', type: 'infinite', desc: 'Karanlığı dağıtan kutsal bir parıltı yayar.' },
+      { name: 'Kutsal Darbe', type: 'short_rest', desc: 'Vuruşa ekstra ışık hasarı ekler.' },
+      { name: 'Sağaltıcı Dokunuş', type: 'long_rest', desc: 'Kutsal güçle yaraları tamamen sarar.' }
+    ],
+    2: [
+      { name: 'Koruma Kalkanı', type: 'short_rest', desc: 'Dostlarını koruyan ilahi bir kalkan oluşturur.' }
+    ],
+    3: [
+      { name: 'İntikam Yemini', type: 'long_rest', desc: 'Bir hedefe karşı tüm saldırıları avantajlı kılar.' }
+    ]
+  },
+  'Ozan': {
+    1: [
+      { name: 'Melodi', type: 'infinite', desc: 'Dostları rahatlatan veya dikkat dağıtan ezgi çalar.' },
+      { name: 'Tasha Kahkahası', type: 'turn', cooldown: 3, desc: 'Hedefi gülme krizine sokarak saf dışı bırakır.' },
+      { name: 'Ozan İlhamı', type: 'short_rest', desc: 'Bir dostuna ilham vererek zarlarına ekleme yapar.' }
+    ],
+    2: [
+      { name: 'Kakofoni', type: 'short_rest', desc: 'Gürültülü ses dalgalarıyla hedefe hasar verir.' }
+    ],
+    3: [
+      { name: 'Kahramanlık Şarkısı', type: 'long_rest', desc: 'Tüm grubun canını ve cesaretini artırır.' }
+    ]
+  },
+  'Barbar': {
+    1: [
+      { name: 'Pervasız Saldırı', type: 'infinite', desc: 'Saldırı zarlarını avantajlı yapar ama size vurmayı kolaylaştırır.' },
+      { name: 'Öfke', type: 'long_rest', desc: 'Öfkeye kapılarak hasar direncini ve gücünü artırır.' }
+    ],
+    2: [
+      { name: 'Vahşi Hücum', type: 'short_rest', desc: 'Düşmanın üzerine atılarak onu yere serer.' }
+    ],
+    3: [
+      { name: 'Ezici Darbe', type: 'short_rest', desc: 'Düşmanın savunmasını yok sayan devasa bir darbe.' }
+    ]
+  },
+  'Keşiş': {
+    1: [
+      { name: 'Hafif Adım', type: 'infinite', desc: 'Gürültü yapmadan sessizce süzülmenizi sağlar.' },
+      { name: 'Ki Darbesi', type: 'turn', cooldown: 2, desc: 'Hızlı bir el hamlesiyle ekstra sersemletici vuruş.' },
+      { name: 'Sabır Savunması', type: 'short_rest', desc: 'Saldırıları savuşturmak için savunma pozisyonu alır.' }
+    ],
+    2: [
+      { name: 'Seri Yumruklar', type: 'short_rest', desc: 'Çok hızlı şekilde arka arkaya darbeler indirir.' }
+    ],
+    3: [
+      { name: 'Sersemletici Vuruş', type: 'long_rest', desc: 'Düşmanı 1 tur boyunca tamamen kilitleyen vuruş.' }
+    ]
+  },
+  'Warlock': {
+    1: [
+      { name: 'Karanlık Görüş', type: 'infinite', desc: 'Zifiri karanlıkta bile net görmenizi sağlar.' },
+      { name: 'Mistik Patlama', type: 'infinite', desc: 'Uzak mesafeden güçlü büyü enerjisi fırlatır.' }
+    ],
+    2: [
+      { name: 'Cehennem Azabı', type: 'short_rest', desc: 'Saldırganlara tepki olarak cehennem ateşiyle yanıt verir.' }
+    ],
+    3: [
+      { name: 'Ruh Yiyici', type: 'long_rest', desc: 'Düşmanın yaşam enerjisini emerek kendi canını doldurur.' }
+    ]
+  },
+  'Druid': {
+    1: [
+      { name: 'Yaprak İğneleri', type: 'infinite', desc: 'Doğal iğneler fırlatarak hasar verir.' },
+      { name: 'İyileştirici Esinti', type: 'short_rest', desc: 'Yumuşak bir rüzgarla dostların canını yeniler.' },
+      { name: 'Doğal Form (Kurt)', type: 'short_rest', desc: 'Vahşi bir kurta dönüşerek savaşır.' }
+    ],
+    2: [
+      { name: 'Diken Büyümesi', type: 'long_rest', desc: 'Alanı keskin dikenlerle kaplayarak hareketi zorlaştırır.' }
+    ],
+    3: [
+      { name: 'Doğanın Öfkesi', type: 'long_rest', desc: 'Doğa güçlerini bir araya getirerek düşmanları sarsar.' }
+    ]
+  }
+};
+
+function getPlayerAbilities(className, level) {
+  const classData = CLASS_ABILITIES[className] || {
+    1: [{ name: 'Temel Hamle', type: 'infinite', desc: 'Basit bir eylem gerçekleştirir.' }],
+    2: [{ name: 'Özel Saldırı', type: 'short_rest', desc: 'Daha etkili ve özel bir hamle.' }],
+    3: [{ name: 'Nihai Güç', type: 'long_rest', desc: 'Büyük etki yaratan en güçlü hamle.' }]
+  };
+  const abilities = [];
+  for (let lvl = 1; lvl <= level; lvl++) {
+    if (classData[lvl]) {
+      abilities.push(...classData[lvl]);
+    }
+  }
+  return abilities;
+}
+
+function findUsedAbility(text, playerSpells) {
+  const cleanText = text.toLowerCase()
+    .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c');
+  
+  for (const spell of playerSpells) {
+    const cleanSpell = spell.toLowerCase()
+      .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c');
+    
+    if (cleanText.includes(cleanSpell)) {
+      return spell;
+    }
+  }
+  return null;
+}
+
 module.exports = {
   name: 'dnd',
   formatCoins,
+  CLASS_ABILITIES,
+  getPlayerAbilities,
+  findUsedAbility,
   description: 'Yapay zeka zindan ejderi (D&D) Dungeon Master oyunu.',
   async callOpenRouter(modelName, systemInstruction, history, prompt) {
     const messages = [
@@ -675,11 +849,70 @@ module.exports = {
         return;
       }
 
+      // Find if they are using an ability
+      const classAbilities = getPlayerAbilities(player.class, player.level || 1);
+      const usedAbility = findUsedAbility(actionText, classAbilities.map(a => a.name));
+
+      if (usedAbility) {
+        const abilityDetails = classAbilities.find(a => a.name.toLowerCase() === usedAbility.toLowerCase());
+        if (!player.cooldowns) player.cooldowns = {};
+
+        // Check if on cooldown
+        const status = player.cooldowns[usedAbility];
+        if (status) {
+          let warnReason = '';
+          if (status === 'short_rest') {
+            warnReason = 'Bu yeteneği tekrar kullanabilmek için **Kısa Dinlenme (Short Rest)** veya **Uzun Dinlenme (Long Rest)** yapmalısınız.';
+          } else if (status === 'long_rest') {
+            warnReason = 'Bu yeteneği tekrar kullanabilmek için **Uzun Dinlenme (Long Rest)** yapmalısınız.';
+          } else if (typeof status === 'number') {
+            warnReason = `Bu yetenek bekleme süresinde! Tekrar kullanabilmek için **${status} tur** beklemelisiniz.`;
+          }
+          
+          const warnMsg = await message.reply(`❌ **${player.charName}**, **${usedAbility}** yeteneğini şu an kullanamaz! ${warnReason}`);
+          setTimeout(async () => {
+            try { await message.delete(); } catch(e) {}
+            try { await warnMsg.delete(); } catch(e) {}
+          }, 7000);
+          return;
+        }
+
+        // Set cooldown/rest state
+        if (abilityDetails.type === 'turn') {
+          player.cooldowns[usedAbility] = abilityDetails.cooldown;
+        } else if (abilityDetails.type === 'short_rest') {
+          player.cooldowns[usedAbility] = 'short_rest';
+        } else if (abilityDetails.type === 'long_rest') {
+          player.cooldowns[usedAbility] = 'long_rest';
+        }
+
+        // Append ability use details to the prompt
+        actionText += ` [Yetenek Kullanımı: ${abilityDetails.name} (Tür: ${abilityDetails.type}, Etki: ${abilityDetails.desc})]`;
+      }
+
       await message.channel.sendTyping();
 
       try {
         const prompt = `[Oyuncu Hamlesi] Karakter: ${player.charName} (${player.class}) | Eylem: ${actionText}`;
         const { responseText } = await module.exports.sendMessageWithFallback(session, prompt);
+
+        // Outside combat: Decrement turn-based cooldowns for all players by 1, skipping the one just cast
+        if (session.state !== 'combat') {
+          session.players.forEach(p => {
+            if (!p.cooldowns) p.cooldowns = {};
+            for (const key of Object.keys(p.cooldowns)) {
+              if (p.charName.toLowerCase() === player.charName.toLowerCase() && usedAbility && key.toLowerCase() === usedAbility.toLowerCase()) {
+                continue;
+              }
+              if (typeof p.cooldowns[key] === 'number' && p.cooldowns[key] > 0) {
+                p.cooldowns[key]--;
+                if (p.cooldowns[key] === 0) {
+                  delete p.cooldowns[key];
+                }
+              }
+            }
+          });
+        }
 
         // Parse state updates (gold, HP, inventory, combat)
         const updates = module.exports.parseStateUpdates(session, responseText, player.charName.toLowerCase());
@@ -763,7 +996,22 @@ module.exports = {
       }
 
       session.players.forEach(p => {
-        const mods = Object.entries(p.modifiers).map(([k, v]) => `${k}: ${v >= 0 ? '+' : ''}${v}`).join(', ');
+        const mods = Object.entries(p.modifiers).map(([k, v]) => {
+          const xp = p.modifierXp?.[k] || 0;
+          const nextXp = 30 + (v * 10);
+          return `${k}: ${v >= 0 ? '+' : ''}${v} (XP: ${xp}/${nextXp})`;
+        }).join(', ');
+
+        const activeAbilities = getPlayerAbilities(p.class, p.level || 1);
+        const abilityList = activeAbilities.map(a => {
+          const cd = p.cooldowns?.[a.name];
+          let statusText = '';
+          if (cd === 'short_rest') statusText = ' ⏳ (Reşarj: Kısa Rest)';
+          else if (cd === 'long_rest') statusText = ' ⏳ (Reşarj: Uzun Rest)';
+          else if (typeof cd === 'number' && cd > 0) statusText = ` ⏳ (Bekleme: ${cd} tur)`;
+          return `🔹 **${a.name}** - *${a.desc}*${statusText}`;
+        }).join('\n');
+
         const fields = [
           `❤️ **Can (HP):** ${p.hp}/${p.maxHp}`,
           `✨ **Tecrübe (XP):** ${p.xp || 0} XP`
@@ -773,7 +1021,7 @@ module.exports = {
         }
         fields.push(
           `🎒 **Ekipmanlar:** ${p.inventory.join(', ')}`,
-          `🔮 **Yetenekler & Büyüler:** ${(p.spells || []).join(', ') || 'Yok'}`,
+          `🔮 **Yetenekler & Büyüler:**\n${abilityList || 'Yok'}`,
           `📊 **Modifikatörler:** \`${mods}\``
         );
 
@@ -784,6 +1032,81 @@ module.exports = {
       });
 
       return message.reply({ embeds: [embed] });
+    }
+
+    // 5.5 DND DİNLEN
+    if (subCommand === 'dinlen' || subCommand === 'rest') {
+      if (!session || session.state !== 'playing') {
+        return message.reply('❌ Şu anda aktif bir oyun oynanmıyor!');
+      }
+
+      const type = args[1]?.toLowerCase();
+      if (!['kisa', 'kısa', 'short', 'uzun', 'long'].includes(type)) {
+        return message.reply('❌ Hatalı Kullanım!\nKullanım: `a!dnd dinlen <kisa/uzun>` veya doğrudan kanala `dinlen kisa` / `dinlen uzun` yazabilirsiniz.');
+      }
+
+      await message.channel.sendTyping();
+
+      try {
+        const isLong = ['uzun', 'long'].includes(type);
+        let restResults = [];
+
+        session.players.forEach(p => {
+          if (!p.cooldowns) p.cooldowns = {};
+          
+          let hpRegained = 0;
+          if (isLong) {
+            hpRegained = p.maxHp - p.hp;
+            p.hp = p.maxHp;
+            p.cooldowns = {};
+          } else {
+            const conMod = p.modifiers['Dayanıklılık'] || 0;
+            const d8 = Math.floor(Math.random() * 8) + 1;
+            hpRegained = Math.max(1, d8 + conMod);
+            p.hp = Math.min(p.maxHp, p.hp + hpRegained);
+
+            // Clear short rest abilities, and reduce turn-based cooldowns by 5
+            const classSpells = getPlayerAbilities(p.class, p.level || 1);
+            for (const key of Object.keys(p.cooldowns)) {
+              const spellData = classSpells.find(s => s.name.toLowerCase() === key.toLowerCase());
+              if (spellData) {
+                if (spellData.type === 'short_rest') {
+                  delete p.cooldowns[key];
+                } else if (spellData.type === 'turn') {
+                  p.cooldowns[key] = Math.max(0, p.cooldowns[key] - 5);
+                  if (p.cooldowns[key] === 0) {
+                    delete p.cooldowns[key];
+                  }
+                }
+              }
+            }
+          }
+          restResults.push(`**${p.charName}** (+${hpRegained} HP, Can: ${p.hp}/${p.maxHp})`);
+        });
+
+        const restPrompt = `[SİSTEM MESAJI - Dinlenme]: Grubun tamamı bir ${isLong ? 'Uzun Dinlenme (Long Rest)' : 'Kısa Dinlenme (Short Rest)'} gerçekleştirdi. Tüm canları ve yetenek bekleme süreleri buna göre güncellendi. Lütfen bu dinlenme sahnesini, nerede dinlendiklerini, dinlenirken başlarına sakin bir şey gelip gelmediğini veya dinlenme sonrasını tasvir et.`;
+        
+        const { responseText } = await module.exports.sendMessageWithFallback(session, restPrompt);
+
+        const embed = new EmbedBuilder()
+          .setColor(isLong ? '#57F287' : '#5865F2')
+          .setTitle(isLong ? '⛺ Uzun Dinlenme (Long Rest)' : '🪵 Kısa Dinlenme (Short Rest)')
+          .setDescription([
+            `💤 Grup başarıyla dinlendi!`,
+            '',
+            ...restResults,
+            '',
+            '✨ **Dungeon Master Anlatımı:**',
+            responseText.trim()
+          ].join('\n'))
+          .setTimestamp();
+
+        return message.reply({ embeds: [embed] });
+      } catch (error) {
+        console.error('Rest Command Error:', error);
+        const errMsg = (error.message || String(error)).slice(0, 1500);
+        return message.reply(`❌ Dinlenme sırasında hata oluştu: \`${errMsg}\``);
+      }
     }
 
     // 6. DND BİTİR
@@ -1228,6 +1551,19 @@ module.exports = {
   },
   async advanceTurn(session) {
     if (!session.combat) return;
+
+    // Decrement turn-based cooldowns for all players on round advance
+    session.players.forEach(p => {
+      if (!p.cooldowns) p.cooldowns = {};
+      for (const key of Object.keys(p.cooldowns)) {
+        if (typeof p.cooldowns[key] === 'number' && p.cooldowns[key] > 0) {
+          p.cooldowns[key]--;
+          if (p.cooldowns[key] === 0) {
+            delete p.cooldowns[key];
+          }
+        }
+      }
+    });
 
     session.combat.turnIndex = (session.combat.turnIndex + 1) % session.combat.order.length;
 

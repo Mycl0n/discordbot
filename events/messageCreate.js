@@ -124,6 +124,24 @@ module.exports = {
             return;
           }
 
+          if (['dinlen kisa', 'dinlen kısa', 'kisa dinlenme', 'kısa dinlenme', 'short rest'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['dinlen', 'kisa'], client);
+            } catch (err) {
+              console.error('Dnd dinlen kisa hatası:', err);
+            }
+            return;
+          }
+
+          if (['dinlen uzun', 'uzun dinlenme', 'long rest'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['dinlen', 'uzun'], client);
+            } catch (err) {
+              console.error('Dnd dinlen uzun hatası:', err);
+            }
+            return;
+          }
+
           if (session.pendingRoll) {
             const targetPlayer = session.players.get(session.pendingRoll.playerId);
             const warnMsg = await message.reply(`❌ Bekleyen bir zar testi var! Önce **${targetPlayer.charName}** adlı oyuncunun buton yardımıyla zar atması gerekiyor.`);
@@ -160,6 +178,15 @@ module.exports = {
             } catch (err) {
               console.error('Dnd bitir hatası:', err);
             }
+            return;
+          }
+
+          if (lowerText.startsWith('dinlen') || lowerText.includes('rest') || lowerText.includes('dinlenme')) {
+            const warnMsg = await message.reply('❌ Savaşın ortasında dinlenemezsiniz! Önce savaşı bitirmeniz gerekiyor.');
+            setTimeout(async () => {
+              try { await message.delete(); } catch(e) {}
+              try { await warnMsg.delete(); } catch(e) {}
+            }, 5000);
             return;
           }
 
