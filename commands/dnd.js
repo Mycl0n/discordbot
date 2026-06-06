@@ -18,6 +18,7 @@ function formatCoins(totalBronze) {
 
 module.exports = {
   name: 'dnd',
+  formatCoins,
   description: 'Yapay zeka zindan ejderi (D&D) Dungeon Master oyunu.',
   async execute(message, args, client) {
     if (!message.guild) {
@@ -169,8 +170,9 @@ module.exports = {
         return message.reply(`❌ Hatalı Kullanım!\nDoğru Kullanım: \`${prefix}dnd katıl <Karakter Adı> <Sınıf>\``);
       }
 
-      if (session.players.has(message.author.id)) {
-        return message.reply('❌ Zaten lobidesiniz! Sadece bir karakterle katılabilirsiniz.');
+      const playerKey = charName.toLowerCase();
+      if (session.players.has(playerKey)) {
+        return message.reply(`❌ **${charName}** adında bir karakter zaten lobide var! Lütfen başka bir isim seçin.`);
       }
 
       let modifiers = {};
@@ -184,89 +186,89 @@ module.exports = {
         displayClass = 'Savaşçı';
         maxHp = 24;
         modifiers = { Kuvvet: 3, Dayanıklılık: 2, 'El Becerisi': 1, Zeka: -1, Bilgelik: 0, Karizma: 0 };
-        gold = 5000;
+        gold = 50;
         inventory = ['Çelik Kılıç', 'Kalkan', 'Deri Zırh', '2x Meşale'];
         spells = ['İkinci Soluk', 'Savaş Narası'];
       } else if (['buyucu', 'büyücü', 'mage', 'wizard'].includes(charClassInput)) {
         displayClass = 'Büyücü';
         maxHp = 14;
         modifiers = { Zeka: 3, Bilgelik: 2, 'El Becerisi': 1, Kuvvet: -1, Dayanıklılık: 0, Karizma: 0 };
-        gold = 8000;
+        gold = 80;
         inventory = ['Büyücü Asası', 'Büyü Kitabı', 'Basit Cübbe', '1x Sağlık İksiri'];
         spells = ['Alev Oku', 'Sihirli Füze', 'Kalkan'];
       } else if (['hirsiz', 'hırsız', 'rogue', 'thief'].includes(charClassInput)) {
         displayClass = 'Hırsız';
         maxHp = 16;
         modifiers = { 'El Becerisi': 3, Karizma: 2, Zeka: 1, Kuvvet: 0, Bilgelik: 0, Dayanıklılık: -1 };
-        gold = 12000;
+        gold = 120;
         inventory = ['2x Çelik Hançer', 'Maymuncuk Seti', 'Hırsız Giysisi', 'Halat (10m)'];
         spells = ['Sinsi Saldırı', 'Kurnaz Eylem'];
       } else if (['rahip', 'cleric', 'priest'].includes(charClassInput)) {
         displayClass = 'Rahip';
         maxHp = 18;
         modifiers = { Bilgelik: 3, Dayanıklılık: 2, Karizma: 1, Zeka: 0, Kuvvet: 1, 'El Becerisi': -1 };
-        gold = 6000;
+        gold = 60;
         inventory = ['Gümüş Topuz', 'Kutsal Sembol', 'Zırhlı Cübbe', '2x Kutsal Su'];
         spells = ['Yaraları İyileştir', 'İlahi Tarama', 'Kutsama'];
       } else if (['korucu', 'ranger', 'archer', 'okcu', 'okçu'].includes(charClassInput)) {
         displayClass = 'Korucu';
         maxHp = 18;
         modifiers = { 'El Becerisi': 3, Bilgelik: 2, Dayanıklılık: 1, Kuvvet: 0, Zeka: 0, Karizma: -1 };
-        gold = 7000;
+        gold = 70;
         inventory = ['Uzun Yay', 'Kısa Kılıç', 'Deri Zırh', 'Ok Kını (20 Ok)'];
         spells = ['Avcının Markası', 'Keskin Göz'];
       } else if (['paladin', 'sovalye', 'şövalye'].includes(charClassInput)) {
         displayClass = 'Paladin';
         maxHp = 22;
         modifiers = { Kuvvet: 3, Karizma: 2, Dayanıklılık: 1, Bilgelik: 0, Zeka: -1, 'El Becerisi': 0 };
-        gold = 6000;
+        gold = 60;
         inventory = ['Büyük Kılıç', 'Kutsal Sembol', 'Zincir Zırh', '1x İyileştirme İksiri'];
         spells = ['Kutsal Darbe', 'Sağaltıcı Dokunuş'];
       } else if (['ozan', 'bard'].includes(charClassInput)) {
         displayClass = 'Ozan';
         maxHp = 16;
         modifiers = { Karizma: 3, 'El Becerisi': 2, Zeka: 1, Kuvvet: -1, Bilgelik: 0, Dayanıklılık: 0 };
-        gold = 9000;
+        gold = 90;
         inventory = ['Lut (Müzik Aleti)', 'Hançer', 'Deri Ceket', 'Diplomasi Belgesi'];
         spells = ['Ozan İlhamı', 'Kakofoni', 'Tasha Kahkahası'];
       } else if (['barbar', 'barbarian'].includes(charClassInput)) {
         displayClass = 'Barbar';
         maxHp = 28;
         modifiers = { Kuvvet: 3, Dayanıklılık: 3, 'El Becerisi': 1, Zeka: -2, Bilgelik: 0, Karizma: 0 };
-        gold = 4000;
+        gold = 40;
         inventory = ['Çift Elli Savaş Baltası', 'Fırlatma Baltası', 'Kürk Giysiler', 'Matara'];
         spells = ['Öfke', 'Pervasız Saldırı'];
       } else if (['kesis', 'keşiş', 'monk'].includes(charClassInput)) {
         displayClass = 'Keşiş';
         maxHp = 18;
         modifiers = { 'El Becerisi': 3, Bilgelik: 2, Dayanıklılık: 1, Kuvvet: 0, Zeka: 0, Karizma: -1 };
-        gold = 3000;
+        gold = 40;
         inventory = ['Ahşap Asa', 'Fırlatma Bıçakları', 'Basit Keşiş Cübbesi', 'Bitki Çayı'];
         spells = ['Ki Darbesi', 'Sabır Savunması'];
       } else if (['warlock', 'karabuyucu', 'kara büyücü'].includes(charClassInput)) {
         displayClass = 'Warlock';
         maxHp = 16;
         modifiers = { Karizma: 3, Dayanıklılık: 2, Zeka: 1, Kuvvet: -1, Bilgelik: 0, 'El Becerisi': 0 };
-        gold = 7000;
+        gold = 70;
         inventory = ['Karanlık Asa', 'Kadim Kitap', 'Gölgeli Cübbe', '1x Ruh Taşı'];
         spells = ['Mistik Patlama', 'Cehennem Azabı', 'Karanlık Görüş'];
       } else if (['druid'].includes(charClassInput)) {
         displayClass = 'Druid';
         maxHp = 18;
         modifiers = { Bilgelik: 3, Dayanıklılık: 2, Zeka: 1, Kuvvet: -1, 'El Becerisi': 0, Karizma: 0 };
-        gold = 5000;
+        gold = 50;
         inventory = ['Sarmaşık Asa', 'Şifalı Bitki Çantası', 'Deri Cübbe', 'Doğa Sembolü'];
         spells = ['Doğal Form (Kurt)', 'Diken Büyümesi', 'İyileştirici Esinti'];
       } else {
         displayClass = charClassInput.charAt(0).toUpperCase() + charClassInput.slice(1);
         maxHp = 20;
         modifiers = { Kuvvet: 1, Dayanıklılık: 1, 'El Becerisi': 1, Zeka: 1, Bilgelik: 1, Karizma: 1 };
-        gold = 5000;
+        gold = 50;
         inventory = ['Basit Ekipmanlar'];
         spells = ['Temel Hamle'];
       }
 
-      session.players.set(message.author.id, {
+      session.players.set(playerKey, {
         userId: message.author.id,
         username: message.author.username,
         charName: charName,
@@ -300,8 +302,8 @@ module.exports = {
       return message.reply({ embeds: [joinEmbed] });
     }
 
-    // DND BAŞLA TEMA (Lobi kurucusu 'başlat' yazınca burası tetiklenir)
-    if (subCommand === 'basla_tema') {
+    // DND BAŞLA EKONOMİ (Lobi kurucusu 'başlat' yazınca burası tetiklenir)
+    if (subCommand === 'basla_ekonomi') {
       if (!session) return;
       if (session.creatorId !== message.author.id) {
         return message.reply('❌ Oyunu sadece lobiyi kuran kişi başlatabilir!');
@@ -310,10 +312,47 @@ module.exports = {
         return message.reply('❌ D&D oynamak için en az **1 oyuncu** katılmalıdır!');
       }
 
+      session.state = 'selecting_economy';
+      return message.reply([
+        '💰 **Ekonomi Modu Seçimi**',
+        'Lütfen oyun boyunca kullanılacak para yönetim biçimini seçin:',
+        '1️⃣ **Ortak Cüzdan (shared)**: Tüm oyuncuların paraları tek bir havuzda birleşir, harcamalar ve kazanılan paralar bu ortak cüzdandan karşılanır.',
+        '2️⃣ **Bireysel Cüzdanlar (personal)**: Her karakter kendi parasına sahip olur ve harcamaları kendisi yapar.',
+        '',
+        '👉 Lütfen bu kanala doğrudan **1** (veya **ortak**) ya da **2** (veya **bireysel**) yazarak seçim yapın.'
+      ].join('\n'));
+    }
+
+    // DND SEÇ EKONOMİ (Ekonomi modu seçilince tetiklenir)
+    if (subCommand === 'sec_ekonomi') {
+      if (!session) return;
+      if (session.creatorId !== message.author.id) {
+        return message.reply('❌ Ekonomi modunu sadece lobiyi kuran kişi seçebilir!');
+      }
+
+      const mode = args[1]?.toLowerCase();
+      if (!['shared', 'personal'].includes(mode)) {
+        return message.reply('❌ Geçersiz ekonomi modu.');
+      }
+
+      session.economyMode = mode;
+
+      if (mode === 'shared') {
+        // Pool all starting gold from current players
+        let totalStartingGold = 0;
+        session.players.forEach(p => {
+          totalStartingGold += p.gold || 0;
+          p.gold = 0; // Clear individual gold since they use shared wallet
+        });
+        session.sharedGold = totalStartingGold;
+      }
+
       session.state = 'selecting_theme';
       return message.reply([
+        `✅ Ekonomi modu **${mode === 'shared' ? 'Ortak Cüzdan' : 'Bireysel Cüzdanlar'}** olarak seçildi!`,
+        '',
         '🔮 **Tema & Evren Seçimi**',
-        `Maceranın geçmesini istediğiniz temayı veya evreni bu kanala doğrudan yazın (Örn: *Ortaçağ fantastik*, *Cyberpunk*, *Kıyamet sonrası metro tünelleri* vb.).`,
+        'Maceranın geçmesini istediğiniz temayı veya evreni bu kanala doğrudan yazın (Örn: *Ortaçağ fantastik*, *Cyberpunk*, *Kıyamet sonrası metro tünelleri* vb.).',
         'Yapay zeka zindan yöneticisi dünyayı bu temaya göre şekillendirecektir.'
       ].join('\n'));
     }
@@ -328,7 +367,8 @@ module.exports = {
         return message.reply('❌ Oyun zaten başladı!');
       }
 
-      if (session.creatorId !== message.author.id && !session.players.has(message.author.id)) {
+      const hasCharacter = Array.from(session.players.values()).some(p => p.userId === message.author.id);
+      if (session.creatorId !== message.author.id && !hasCharacter) {
         return message.reply('❌ Bu işlemi sadece oyunculardan biri gerçekleştirebilir!');
       }
 
@@ -482,21 +522,69 @@ module.exports = {
         return message.reply(`❌ Şu anda aktif bir oyun oynanmıyor! Önce lobiyi kurup oyunu başlatın.`);
       }
 
-      if (!session.players.has(message.author.id)) {
+      const userChars = Array.from(session.players.values()).filter(p => p.userId === message.author.id);
+      if (userChars.length === 0) {
         return message.reply('❌ Siz bu oyundaki oyunculardan biri değilsiniz!');
       }
 
       if (session.pendingRoll) {
         const targetPlayer = session.players.get(session.pendingRoll.playerId);
-        return message.reply(`❌ Bekleyen bir zar testi var! Önce **${targetPlayer.charName}** adlı oyuncunun buton yardımıyla zar atması gerekiyor.`);
+        const targetName = targetPlayer ? targetPlayer.charName : 'Bilinmeyen Karakter';
+        return message.reply(`❌ Bekleyen bir zar testi var! Önce **${targetName}** adlı oyuncunun buton yardımıyla zar atması gerekiyor.`);
       }
 
-      const actionText = args.slice(1).join(' ');
+      let actionText = args.slice(1).join(' ');
       if (!actionText) {
         return message.reply(`❌ Lütfen karakterinizin yapacağı eylemi yazın!\nKullanım: \`${prefix}dnd aksiyon <ne yapmak istiyorsunuz?>\``);
       }
 
-      const player = session.players.get(message.author.id);
+      let player = null;
+      let prefixMatched = false;
+      const prefixMatch = actionText.match(/^([^:]+):\s*(.*)$/);
+      if (prefixMatch) {
+        const possibleName = prefixMatch[1].trim().toLowerCase();
+        player = userChars.find(p => p.charName.toLowerCase() === possibleName);
+        if (player) {
+          actionText = prefixMatch[2].trim();
+          prefixMatched = true;
+        }
+      }
+
+      if (!player) {
+        const firstWord = actionText.split(/\s+/)[0];
+        const possibleNameClean = firstWord.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]/g, '').toLowerCase();
+        player = userChars.find(p => p.charName.toLowerCase() === possibleNameClean);
+        if (player) {
+          actionText = actionText.substring(firstWord.length).trim();
+          prefixMatched = true;
+        }
+      }
+
+      if (!player) {
+        if (session.state === 'combat') {
+          const currentTurn = session.combat.order[session.combat.turnIndex];
+          if (currentTurn && currentTurn.type === 'player') {
+            const turnPlayer = session.players.get(currentTurn.id);
+            if (turnPlayer && turnPlayer.userId === message.author.id) {
+              player = turnPlayer;
+            }
+          }
+        }
+
+        if (!player && userChars.length === 1) {
+          player = userChars[0];
+        }
+      }
+
+      if (!player) {
+        const charList = userChars.map(p => `**${p.charName}**`).join(', ');
+        const warnMsg = await message.reply(`❌ Birden fazla karakteriniz var (${charList}). Eylemi hangi karakterin yaptığını belirtmek için mesajın başına adını ekleyin (Örn: \`${userChars[0].charName}: Kılıcımı çekiyorum\`).`);
+        setTimeout(async () => {
+          try { await message.delete(); } catch(e) {}
+          try { await warnMsg.delete(); } catch(e) {}
+        }, 7000);
+        return;
+      }
 
       await message.channel.sendTyping();
 
@@ -505,7 +593,7 @@ module.exports = {
         const { responseText } = await module.exports.sendMessageWithFallback(session, prompt);
 
         // Parse state updates (gold, HP, inventory, combat)
-        const updates = module.exports.parseStateUpdates(session, responseText, message.author.id);
+        const updates = module.exports.parseStateUpdates(session, responseText, player.charName.toLowerCase());
 
         const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)(?:,\s*Zorluk:\s*(\d+))?\]/i;
         const match = updates.responseText.match(rollRegex);
@@ -534,7 +622,7 @@ module.exports = {
           session.pendingRoll = {
             ability: ability,
             difficulty: difficulty,
-            playerId: message.author.id
+            playerId: player.charName.toLowerCase()
           };
 
           const button = new ButtonBuilder()
@@ -580,18 +668,28 @@ module.exports = {
         .setTitle('🛡️ D&D Grup Durumu')
         .setTimestamp();
 
+      if (session.economyMode === 'shared') {
+        embed.setDescription(`💰 **Ortak Cüzdan:** ${formatCoins(session.sharedGold || 0)}`);
+      }
+
       session.players.forEach(p => {
         const mods = Object.entries(p.modifiers).map(([k, v]) => `${k}: ${v >= 0 ? '+' : ''}${v}`).join(', ');
+        const fields = [
+          `❤️ **Can (HP):** ${p.hp}/${p.maxHp}`,
+          `✨ **Tecrübe (XP):** ${p.xp || 0} XP`
+        ];
+        if (session.economyMode !== 'shared') {
+          fields.push(`💰 **Cüzdan (Sikke):** ${formatCoins(p.gold || 0)}`);
+        }
+        fields.push(
+          `🎒 **Ekipmanlar:** ${p.inventory.join(', ')}`,
+          `🔮 **Yetenekler & Büyüler:** ${(p.spells || []).join(', ') || 'Yok'}`,
+          `📊 **Modifikatörler:** \`${mods}\``
+        );
+
         embed.addFields({
-          name: `👤 ${p.charName} (${p.class}) - Seviye ${p.level || 1}`,
-          value: [
-            `❤️ **Can (HP):** ${p.hp}/${p.maxHp}`,
-            `✨ **Tecrübe (XP):** ${p.xp || 0} XP`,
-            `💰 **Cüzdan (Sikke):** ${formatCoins(p.gold || 0)}`,
-            `🎒 **Ekipmanlar:** ${p.inventory.join(', ')}`,
-            `🔮 **Yetenekler & Büyüler:** ${(p.spells || []).join(', ') || 'Yok'}`,
-            `📊 **Modifikatörler:** \`${mods}\``
-          ].join('\n')
+          name: `👤 ${p.charName} (${p.class}) - Seviye ${p.level || 1} [Sahibi: ${p.username}]`,
+          value: fields.join('\n')
         });
       });
 
@@ -677,17 +775,17 @@ module.exports = {
             'Sistemimizde para birimi sikkedir ve Bronz, Gümüş, Altın olarak 3\'e ayrılır (1 Altın = 10 Gümüş, 1 Gümüş = 10 Bronz). Alışverişlerde ve para üstü ödemelerinde bu oranları temel al.',
             '',
             'SİSTEMİMİZDEKİ SINIFLAR, EŞYALAR VE YETENEKLER:',
-            '1. Savaşçı: 24 HP | Ekipman: Çelik Kılıç, Kalkan, Deri Zırh, 2x Meşale, 50 Altın Sikke | Yetenekler: İkinci Soluk (1d10 + Seviye can yeniler), Savaş Narası (fazladan aksiyon).',
-            '2. Büyücü: 14 HP | Ekipman: Büyücü Asası, Büyü Kitabı, Basit Cübbe, 1x Sağlık İksiri, 80 Altın Sikke | Yetenekler/Büyüler: Alev Oku (1d10 hasar), Sihirli Füze (3x 1d4+1 hasar), Kalkan (+5 Zırh Sınıfı).',
-            '3. Hırsız: 16 HP | Ekipman: 2x Çelik Hançer, Maymuncuk Seti, Hırsız Giysisi, Halat (10m), 120 Altın Sikke | Yetenekler: Sinsi Saldırı (+2d6 hasar), Kurnaz Eylem (saklanma/kaçma).',
-            '4. Rahip: 18 HP | Ekipman: Gümüş Topuz, Kutsal Sembol, Zırhlı Cübbe, 2x Kutsal Su, 60 Altın Sikke | Yetenekler/Büyüler: Yaraları İyileştir (1d8+Bilgelik iyileştirme), İlahi Tarama (yakındaki kutsal/tekinsiz varlıkları sezer), Kutsama (zarlara +1d4 ekler).',
-            '5. Korucu: 18 HP | Ekipman: Uzun Yay, Kısa Kılıç, Deri Zırh, Ok Kını (20 Ok), 70 Altın Sikke | Yetenekler: Avcının Markası (hedefe fazladan hasar), Keskin Göz (dikkat ve algı testlerinde kolaylık).',
-            '6. Paladin: 22 HP | Ekipman: Büyük Kılıç, Kutsal Sembol, Zincir Zırh, 1x İyileştirme İksiri, 60 Altın Sikke | Yetenekler: Kutsal Darbe (ekstra kutsal hasar), Sağaltıcı Dokunuş (can iyileştirme).',
-            '7. Ozan: 16 HP | Ekipman: Lut (Müzik Aleti), Hançer, Deri Ceket, Diplomasi Belgesi, 90 Altın Sikke | Yetenekler/Büyüler: Ozan İlhamı (arkadaşına zarda bonus verir), Kakofoni (gürültülü hasar büyüsü), Tasha Kahkahası (hedefi gülme krizine sokarak saf dışı bırakır).',
-            '8. Barbar: 28 HP | Ekipman: Çift Elli Savaş Baltası, Fırlatma Baltası, Kürk Giysiler, Matara, 40 Altın Sikke | Yetenekler: Öfke (alınan hasarı azaltır, vurulan hasarı artırır), Pervasız Saldırı (avantajlı ama riskli saldırı).',
-            '9. Keşiş: 18 HP | Ekipman: Ahşap Asa, Fırlatma Bıçakları, Basit Keşiş Cübbesi, Bitki Çayı, 30 Altın Sikke | Yetenekler: Ki Darbesi (silahsız ekstra hızlı vuruşlar), Sabır Savunması (gelen saldırıları savuşturma).',
-            '10. Warlock: 16 HP | Ekipman: Karanlık Asa, Kadim Kitap, Gölgeli Cübbe, 1x Ruh Taşı, 70 Altın Sikke | Yetenekler/Büyüler: Mistik Patlama (güçlü büyü atışı), Cehennem Azabı (tepki olarak alev hasarı), Karanlık Görüş (karanlıkta görme).',
-            '11. Druid: 18 HP | Ekipman: Sarmaşık Asa, Şifalı Bitki Çantası, Deri Cübbe, Doğa Sembolü, 50 Altın Sikke | Yetenekler/Büyüler: Doğal Form (Kurt formuna dönüşür), Diken Büyümesi (alanı dikenlerle kaplar), İyileştirici Esinti (can yeniler).'
+            '1. Savaşçı: 24 HP | Ekipman: Çelik Kılıç, Kalkan, Deri Zırh, 2x Meşale, 5 Gümüş Sikke | Yetenekler: İkinci Soluk (1d10 + Seviye can yeniler), Savaş Narası (fazladan aksiyon).',
+            '2. Büyücü: 14 HP | Ekipman: Büyücü Asası, Büyü Kitabı, Basit Cübbe, 1x Sağlık İksiri, 8 Gümüş Sikke | Yetenekler/Büyüler: Alev Oku (1d10 hasar), Sihirli Füze (3x 1d4+1 hasar), Kalkan (+5 Zırh Sınıfı).',
+            '3. Hırsız: 16 HP | Ekipman: 2x Çelik Hançer, Maymuncuk Seti, Hırsız Giysisi, Halat (10m), 12 Gümüş Sikke | Yetenekler: Sinsi Saldırı (+2d6 hasar), Kurnaz Eylem (saklanma/kaçma).',
+            '4. Rahip: 18 HP | Ekipman: Gümüş Topuz, Kutsal Sembol, Zırhlı Cübbe, 2x Kutsal Su, 6 Gümüş Sikke | Yetenekler/Büyüler: Yaraları İyileştir (1d8+Bilgelik iyileştirme), İlahi Tarama (yakındaki kutsal/tekinsiz varlıkları sezer), Kutsama (zarlara +1d4 ekler).',
+            '5. Korucu: 18 HP | Ekipman: Uzun Yay, Kısa Kılıç, Deri Zırh, Ok Kını (20 Ok), 7 Gümüş Sikke | Yetenekler: Avcının Markası (hedefe fazladan hasar), Keskin Göz (dikkat ve algı testlerinde kolaylık).',
+            '6. Paladin: 22 HP | Ekipman: Büyük Kılıç, Kutsal Sembol, Zincir Zırh, 1x İyileştirme İksiri, 6 Gümüş Sikke | Yetenekler: Kutsal Darbe (ekstra kutsal hasar), Sağaltıcı Dokunuş (can iyileştirme).',
+            '7. Ozan: 16 HP | Ekipman: Lut (Müzik Aleti), Hançer, Deri Ceket, Diplomasi Belgesi, 9 Gümüş Sikke | Yetenekler/Büyüler: Ozan İlhamı (arkadaşına zarda bonus verir), Kakofoni (gürültülü hasar büyüsü), Tasha Kahkahası (hedefi gülme krizine sokarak saf dışı bırakır).',
+            '8. Barbar: 28 HP | Ekipman: Çift Elli Savaş Baltası, Fırlatma Baltası, Kürk Giysiler, Matara, 4 Gümüş Sikke | Yetenekler: Öfke (alınan hasarı azaltır, vurulan hasarı artırır), Pervasız Saldırı (avantajlı ama riskli saldırı).',
+            '9. Keşiş: 18 HP | Ekipman: Ahşap Asa, Fırlatma Bıçakları, Basit Keşiş Cübbesi, Bitki Çayı, 4 Gümüş Sikke | Yetenekler: Ki Darbesi (silahsız ekstra hızlı vuruşlar), Sabır Savunması (gelen saldırıları savuşturma).',
+            '10. Warlock: 16 HP | Ekipman: Karanlık Asa, Kadim Kitap, Gölgeli Cübbe, 1x Ruh Taşı, 7 Gümüş Sikke | Yetenekler/Büyüler: Mistik Patlama (güçlü büyü atışı), Cehennem Azabı (tepki olarak alev hasarı), Karanlık Görüş (karanlıkta görme).',
+            '11. Druid: 18 HP | Ekipman: Sarmaşık Asa, Şifalı Bitki Çantası, Deri Cübbe, Doğa Sembolü, 5 Gümüş Sikke | Yetenekler/Büyüler: Doğal Form (Kurt formuna dönüşür), Diken Büyümesi (alanı dikenlerle kaplar), İyileştirici Esinti (can yeniler).'
           ].join('\n');
 
           const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
@@ -807,9 +905,13 @@ module.exports = {
     responseText = responseText.replace(goldRegex, '');
 
     if (goldChanges !== 0 && triggeringPlayerId) {
-      const player = session.players.get(triggeringPlayerId);
-      if (player) {
-        player.gold = Math.max(0, (player.gold || 0) + goldChanges);
+      if (session.economyMode === 'shared') {
+        session.sharedGold = Math.max(0, (session.sharedGold || 0) + goldChanges);
+      } else {
+        const player = session.players.get(triggeringPlayerId);
+        if (player) {
+          player.gold = Math.max(0, (player.gold || 0) + goldChanges);
+        }
       }
     }
 
@@ -925,7 +1027,7 @@ module.exports = {
       const d20 = Math.floor(Math.random() * 20) + 1;
       order.push({
         type: 'player',
-        id: p.userId,
+        id: p.charName.toLowerCase(),
         name: p.charName,
         initiative: d20 + dexMod,
         dex: dexMod

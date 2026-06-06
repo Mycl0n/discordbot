@@ -22,13 +22,13 @@ module.exports = {
       }
 
       const playerId = session.pendingRoll.playerId;
-      if (interaction.user.id !== playerId) {
-        return interaction.reply({ content: '❌ Bu zarı sadece hamleyi yapan oyuncu atabilir!', ephemeral: true });
-      }
-
       const player = session.players.get(playerId);
       if (!player) {
         return interaction.reply({ content: '❌ Karakteriniz bulunamadı!', ephemeral: true });
+      }
+
+      if (interaction.user.id !== player.userId) {
+        return interaction.reply({ content: '❌ Bu zarı sadece hamleyi yapan oyuncu atabilir!', ephemeral: true });
       }
 
       await interaction.deferUpdate();
@@ -132,7 +132,10 @@ module.exports = {
         // Print changes footer if any
         let footerParts = [];
         if (updates.hpChanges !== 0) footerParts.push(`💔 HP: ${updates.hpChanges >= 0 ? '+' : ''}${updates.hpChanges}`);
-        if (updates.goldChanges !== 0) footerParts.push(`💰 Altın: ${updates.goldChanges >= 0 ? '+' : ''}${updates.goldChanges}`);
+        if (updates.goldChanges !== 0) {
+          const changeSign = updates.goldChanges >= 0 ? '+' : '';
+          footerParts.push(`💰 Sikke: ${changeSign}${dndCommand.formatCoins(updates.goldChanges)}`);
+        }
         if (updates.addedItems.length > 0) footerParts.push(`🎒 Alınan: ${updates.addedItems.join(', ')}`);
         if (updates.removedItems.length > 0) footerParts.push(`🗑️ Atılan: ${updates.removedItems.join(', ')}`);
         if (footerParts.length > 0) replyEmbed.setFooter({ text: footerParts.join(' | ') });

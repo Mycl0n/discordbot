@@ -25,9 +25,9 @@ module.exports = {
         if (session.state === 'lobby') {
           if (['başlat', 'baslat', 'basla', 'start', 'oyna', 'play'].includes(lowerText)) {
             try {
-              await dndCommand.execute(message, ['basla_tema'], client);
+              await dndCommand.execute(message, ['basla_ekonomi'], client);
             } catch (err) {
-              console.error('Dnd başlat_tema hatası:', err);
+              console.error('Dnd basla_ekonomi hatası:', err);
             }
             return;
           }
@@ -66,6 +66,32 @@ module.exports = {
             console.error('Dnd lobi_soru hatası:', err);
           }
           return;
+        }
+
+        // 1.5. ECONOMY STATE: Select Economy Mode
+        if (session.state === 'selecting_economy') {
+          if (['1', 'ortak', 'shared'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['sec_ekonomi', 'shared'], client);
+            } catch (err) {
+              console.error('Dnd sec_ekonomi hatası:', err);
+            }
+            return;
+          } else if (['2', 'bireysel', 'personal', 'individual'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['sec_ekonomi', 'personal'], client);
+            } catch (err) {
+              console.error('Dnd sec_ekonomi hatası:', err);
+            }
+            return;
+          } else {
+            const warnMsg = await message.reply('❌ Lütfen sadece **1** (Ortak Cüzdan) veya **2** (Bireysel Cüzdanlar) yazarak seçim yapın.');
+            setTimeout(async () => {
+              try { await message.delete(); } catch(e) {}
+              try { await warnMsg.delete(); } catch(e) {}
+            }, 5000);
+            return;
+          }
         }
 
         // 2. THEME STATE: Set Theme
@@ -148,9 +174,10 @@ module.exports = {
             return;
           }
 
-          if (currentTurn.type === 'player' && currentTurn.id !== message.author.id) {
-            const activePlayer = session.players.get(currentTurn.id);
-            const warnMsg = await message.reply(`❌ Şu an sıra sende değil! Sıra **${activePlayer.charName}** adlı oyuncuda.`);
+          const activePlayer = session.players.get(currentTurn.id);
+          if (currentTurn.type === 'player' && (!activePlayer || activePlayer.userId !== message.author.id)) {
+            const ownerName = activePlayer ? activePlayer.username : 'başka bir oyuncu';
+            const warnMsg = await message.reply(`❌ Şu an sıra sende değil! Sıra **${activePlayer ? activePlayer.charName : currentTurn.name}** [Sahibi: ${ownerName}] adlı karakterde.`);
             setTimeout(async () => {
               try { await message.delete(); } catch(e) {}
               try { await warnMsg.delete(); } catch(e) {}
