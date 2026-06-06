@@ -162,8 +162,8 @@ module.exports = {
           const changeSign = updates.goldChanges >= 0 ? '+' : '';
           footerParts.push(`💰 Sikke: ${changeSign}${dndCommand.formatCoins(updates.goldChanges)}`);
         }
-        if (updates.addedItems.length > 0) footerParts.push(`🎒 Alınan: ${updates.addedItems.join(', ')}`);
-        if (updates.removedItems.length > 0) footerParts.push(`🗑️ Atılan: ${updates.removedItems.join(', ')}`);
+        if (updates.addedItems.length > 0) footerParts.push(`🎒 Çantaya Eklenen: ${updates.addedItems.join(', ')}`);
+        if (updates.removedItems.length > 0) footerParts.push(`🗑️ Çantadan Çıkarılan: ${updates.removedItems.join(', ')}`);
         if (footerParts.length > 0) replyEmbed.setFooter({ text: footerParts.join(' | ') });
 
         const components = [];

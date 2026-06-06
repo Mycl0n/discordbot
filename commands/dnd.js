@@ -16,6 +16,112 @@ function formatCoins(totalBronze) {
   return parts.join(' ');
 }
 
+function normalizeTurkish(str) {
+  if (!str) return '';
+  return str.toLowerCase()
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .replace(/i̇/g, 'i') // combining dot
+    .replace(/\u0130/g, 'i')
+    .replace(/\u0131/g, 'i');
+}
+
+function updateInventory(inventory, itemName, changeAmount) {
+  if (!inventory) return;
+  const cleanItemName = normalizeTurkish(itemName);
+  
+  let foundIndex = -1;
+  for (let i = 0; i < inventory.length; i++) {
+    const item = normalizeTurkish(inventory[i]);
+    
+    // Check if matching arrow/ok container
+    if (cleanItemName === 'ok' && item.includes('ok')) {
+      foundIndex = i;
+      break;
+    }
+    // Match exact string
+    if (item === cleanItemName) {
+      foundIndex = i;
+      break;
+    }
+    // Match base name for prefix quantity, e.g. if inventory has "2x Meşale" and itemName is "Meşale"
+    const prefixMatch = inventory[i].match(/^(\d+)\s*x\s*(.+)$/i);
+    if (prefixMatch && normalizeTurkish(prefixMatch[2]) === cleanItemName) {
+      foundIndex = i;
+      break;
+    }
+    // Match base name for suffix quantity, e.g. if inventory has "Meşale (2)" and itemName is "Meşale"
+    const suffixMatch = inventory[i].match(/^(.+)\s*\((\d+)\)$/i);
+    if (suffixMatch && normalizeTurkish(suffixMatch[1]) === cleanItemName) {
+      foundIndex = i;
+      break;
+    }
+  }
+
+  if (foundIndex !== -1) {
+    const currentItem = inventory[foundIndex];
+    
+    // Check if it's arrow count in arrow container (e.g. "Ok Kını (20 Ok)")
+    const arrowMatch = currentItem.match(/(\d+)\s*ok/i);
+    if (arrowMatch) {
+      const currentQty = parseInt(arrowMatch[1]);
+      const newQty = Math.max(0, currentQty + changeAmount);
+      inventory[foundIndex] = currentItem.replace(/(\d+)\s*ok/i, `${newQty} Ok`);
+      return;
+    }
+
+    // Check if it has "Nx Item" prefix format
+    const prefixMatch = currentItem.match(/^(\d+)\s*x\s*(.+)$/i);
+    if (prefixMatch) {
+      const currentQty = parseInt(prefixMatch[1]);
+      const name = prefixMatch[2].trim();
+      const newQty = currentQty + changeAmount;
+      if (newQty <= 0) {
+        inventory.splice(foundIndex, 1);
+      } else {
+        inventory[foundIndex] = `${newQty}x ${name}`;
+      }
+      return;
+    }
+
+    // Check if it has "Item (N)" suffix format
+    const suffixMatch = currentItem.match(/^(.+)\s*\((\d+)\)$/i);
+    if (suffixMatch) {
+      const name = suffixMatch[1].trim();
+      const currentQty = parseInt(suffixMatch[2]);
+      const newQty = currentQty + changeAmount;
+      if (newQty <= 0) {
+        inventory.splice(foundIndex, 1);
+      } else {
+        inventory[foundIndex] = `${name} (${newQty})`;
+      }
+      return;
+    }
+
+    // It's a simple item with no quantity (e.g. "Domuz Derisi")
+    if (changeAmount < 0) {
+      inventory.splice(foundIndex, 1);
+    } else if (changeAmount > 0) {
+      // Convert to quantity format
+      inventory[foundIndex] = `${1 + changeAmount}x ${currentItem}`;
+    }
+  } else {
+    // Item not found in inventory, add it
+    if (changeAmount > 0) {
+      if (changeAmount === 1) {
+        inventory.push(itemName);
+      } else {
+        inventory.push(`${changeAmount}x ${itemName}`);
+      }
+    }
+  }
+}
+
+
 const CLASS_ABILITIES = {
   'Savaşçı': {
     1: [
@@ -193,6 +299,7 @@ module.exports = {
   CLASS_ABILITIES,
   getPlayerAbilities,
   findUsedAbility,
+  updateInventory,
   description: 'Yapay zeka zindan ejderi (D&D) Dungeon Master oyunu.',
   async callOpenRouter(modelName, systemInstruction, history, prompt) {
     const messages = [
@@ -365,7 +472,7 @@ module.exports = {
           '🌿 **Druid** | 🛡️ **Paladin** | 🎵 **Ozan** | 🪓 **Barbar**',
           '🎯 **Korucu** | 🥋 **Kesis** | 😈 **Warlock**',
           '',
-          '*Detaylı can, modifikatör ve ekipman/yetenek paketiniz katıldığınızda açıklanacaktır.*',
+          '*Detaylı can, modifikatör ve çanta/yetenek paketiniz katıldığınızda açıklanacaktır.*',
           '💡 *Başlangıç eşyalarınızın veya yeteneklerinizin ne işe yaradığını sormak için oyun başlamadan önce doğrudan buraya yazabilirsiniz!*',
           '',
           '*Oyuna başlayabilmek için en az **1 oyuncunun** katılması gerekmektedir.*',
@@ -503,7 +610,7 @@ module.exports = {
         maxHp = 20;
         modifiers = { Kuvvet: 1, Dayanıklılık: 1, 'El Becerisi': 1, Zeka: 1, Bilgelik: 1, Karizma: 1 };
         gold = 50;
-        inventory = ['Basit Ekipmanlar'];
+        inventory = ['Basit Eşyalar'];
         spells = ['Temel Hamle'];
       }
 
@@ -529,7 +636,7 @@ module.exports = {
           `**Karakter:** **${charName}** (${displayClass})`,
           `❤️ **Can (HP):** ${maxHp}/${maxHp}`,
           `💰 **Cüzdan (Sikke):** ${formatCoins(gold)}`,
-          `🎒 **Ekipmanlar:** ${inventory.join(', ')}`,
+          `🎒 **Çanta:** ${inventory.join(', ')}`,
           `🔮 **Yetenekler & Büyüler:** ${spells.join(', ')}`,
           '',
           `💡 *Sahip olduğunuz eşya veya yeteneklerin ne işe yaradığını öğrenmek için doğrudan buraya sorabilirsiniz! (Örn: "ilahi tarama ne işe yarar?")*`,
@@ -663,7 +770,12 @@ module.exports = {
           '   - Oyundaki para birimi "sikke"dir ve Bronz, Gümüş, Altın olarak 3\'e ayrılır.',
           '   - Para değerleri: 1 Altın = 10 Gümüş, 1 Gümüş = 10 Bronz. (Dolayısıyla 1 Altın = 100 Bronz).',
           '   - Oyuncu ödeme yaptığında (örn: 1 gümüş verdiğinde), satıcı/NPC ona para üstünü bronz sikkelerle ödeyebilir. Hikaye anlatımında bunu doğal bir şekilde yansıt.',
-          '   - Para değişimlerini mesajın sonuna şu formatta etiketler ekleyerek belirt: `[Sikke: +5 Altın]`, `[Sikke: -2 Gümüş]`, `[Sikke: +10 Bronz]`. Eğer birden fazla para birimi değişiyorsa ayrı ayrı ekle (Örn: `[Sikke: -1 Gümüş] [Sikke: -5 Bronz]`).'
+          '   - Para değişimlerini mesajın sonuna şu formatta etiketler ekleyerek belirt: `[Sikke: +5 Altın]`, `[Sikke: -2 Gümüş]`, `[Sikke: +10 Bronz]`. Eğer birden fazla para birimi değişiyorsa ayrı ayrı ekle (Örn: `[Sikke: -1 Gümüş] [Sikke: -5 Bronz]`).',
+          '7. ENVANTER VE EŞYA SİSTEMİ (KRİTİK):',
+          '   - Oyuncular yeni bir eşya elde ettiğinde (örn: domuz derisi yüzme, ganimet bulma) veya bir eşya kaybettiklerinde/tükettiklerinde bunu envanter güncelleme etiketleriyle belirtmelisin.',
+          '   - Format: `[Envanter: +Eşya Adı]` veya `[Envanter: -Eşya Adı]`.',
+          '   - Eğer birden fazla veya miktarlı bir eşya ekleniyorsa ya da çıkarılıyorsa, miktarı belirterek yaz. Örnek: `[Envanter: +3 Domuz Eti]`, `[Envanter: +Domuz Derisi]`, `[Envanter: -1 Ok]`, `[Envanter: -1 Meşale]`. Bu etiketleri yanıtının sonuna ekle.',
+          '8. OTOMATİK ENVANTER GÜNCELLEMELERİ: Oyuncuların yay/ok kullanma, meşale yakma veya iksir içme gibi eylemleri sistem tarafından otomatik olarak envanterden düşülür. Senin bu standart tüketimler için ayrıca `[Envanter: -1 Ok]` yazmana gerek yoktur.'
         ].join('\n');
 
         // Format player list for AI
@@ -890,6 +1002,48 @@ module.exports = {
         actionText += ` [Yetenek Kullanımı: ${abilityDetails.name} (Tür: ${abilityDetails.type}, Etki: ${abilityDetails.desc})]`;
       }
 
+      // Auto-consumption interceptor
+      let autoRemoved = [];
+      const cleanAction = normalizeTurkish(actionText);
+
+      // 1. Arrows usage detection:
+      const hasArrowKeywords = /\b(ok(?:lar|um|u\b|un|a|ta|tan|la)?|yay(?:lar|im|in|a|la)?)\b/i.test(cleanAction) && /\b(at|firlat|kullan|vur|saldir|ger|atis|yirt|savur)/i.test(cleanAction);
+      const isMultiShot = usedAbility && (normalizeTurkish(usedAbility) === 'coklu atis');
+
+      if (hasArrowKeywords || isMultiShot) {
+        const arrowCount = isMultiShot ? 2 : 1;
+        const hasArrows = player.inventory.some(i => normalizeTurkish(i).includes('ok'));
+        if (hasArrows) {
+          updateInventory(player.inventory, 'ok', -arrowCount);
+          autoRemoved.push(`${arrowCount} Ok`);
+        }
+      }
+
+      // 2. Torch usage detection:
+      const hasTorchKeywords = /\bmesale(?:yi|ler|m|den|ye|yle)?\b/i.test(cleanAction) && /\b(yak|kullan|tut|parla)/i.test(cleanAction);
+      if (hasTorchKeywords) {
+        const hasTorch = player.inventory.some(i => normalizeTurkish(i).includes('mesale'));
+        if (hasTorch) {
+          updateInventory(player.inventory, 'meşale', -1);
+          autoRemoved.push('1 Meşale');
+        }
+      }
+
+      // 3. Potion usage detection:
+      const hasPotionKeywords = /\biksir(?:i|ler|im|den|e|le)?\b/i.test(cleanAction) && /\b(ic|tuket|kullan|yut|bas)/i.test(cleanAction);
+      if (hasPotionKeywords) {
+        const potionItem = player.inventory.find(i => normalizeTurkish(i).includes('iksir'));
+        if (potionItem) {
+          const potionName = potionItem.replace(/^\d+x\s*/i, '').replace(/\s*\(\d+\)$/i, '').trim();
+          updateInventory(player.inventory, potionName, -1);
+          autoRemoved.push(potionName);
+        }
+      }
+
+      if (autoRemoved.length > 0) {
+        actionText += ` [Envanter Tüketimi: ${autoRemoved.join(', ')}]`;
+      }
+
       await message.channel.sendTyping();
 
       try {
@@ -917,6 +1071,11 @@ module.exports = {
         // Parse state updates (gold, HP, inventory, combat)
         const updates = module.exports.parseStateUpdates(session, responseText, player.charName.toLowerCase());
 
+        // Merge auto-consumed items into updates.removedItems so they are printed in the footer
+        if (autoRemoved.length > 0) {
+          updates.removedItems = [...new Set([...autoRemoved, ...updates.removedItems])];
+        }
+
         const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)(?:,\s*Zorluk:\s*(\d+))?\]/i;
         const match = updates.responseText.match(rollRegex);
 
@@ -933,8 +1092,8 @@ module.exports = {
           const changeSign = updates.goldChanges >= 0 ? '+' : '';
           footerParts.push(`💰 Sikke: ${changeSign}${formatCoins(updates.goldChanges)}`);
         }
-        if (updates.addedItems.length > 0) footerParts.push(`🎒 Alınan: ${updates.addedItems.join(', ')}`);
-        if (updates.removedItems.length > 0) footerParts.push(`🗑️ Atılan: ${updates.removedItems.join(', ')}`);
+        if (updates.addedItems.length > 0) footerParts.push(`🎒 Çantaya Eklenen: ${updates.addedItems.join(', ')}`);
+        if (updates.removedItems.length > 0) footerParts.push(`🗑️ Çantadan Çıkarılan: ${updates.removedItems.join(', ')}`);
         if (footerParts.length > 0) embed.setFooter({ text: footerParts.join(' | ') });
 
         const components = [];
@@ -1020,7 +1179,7 @@ module.exports = {
           fields.push(`💰 **Cüzdan (Sikke):** ${formatCoins(p.gold || 0)}`);
         }
         fields.push(
-          `🎒 **Ekipmanlar:** ${p.inventory.join(', ')}`,
+          `🎒 **Çanta:** ${p.inventory.join(', ')}`,
           `🔮 **Yetenekler & Büyüler:**\n${abilityList || 'Yok'}`,
           `📊 **Modifikatörler:** \`${mods}\``
         );
@@ -1214,17 +1373,17 @@ module.exports = {
             'Sistemimizde para birimi sikkedir ve Bronz, Gümüş, Altın olarak 3\'e ayrılır (1 Altın = 10 Gümüş, 1 Gümüş = 10 Bronz). Alışverişlerde ve para üstü ödemelerinde bu oranları temel al.',
             '',
             'SİSTEMİMİZDEKİ SINIFLAR, EŞYALAR VE YETENEKLER:',
-            '1. Savaşçı: 24 HP | Ekipman: Çelik Kılıç, Kalkan, Deri Zırh, 2x Meşale, 5 Gümüş Sikke | Yetenekler: İkinci Soluk (1d10 + Seviye can yeniler), Savaş Narası (fazladan aksiyon).',
-            '2. Büyücü: 14 HP | Ekipman: Büyücü Asası, Büyü Kitabı, Basit Cübbe, 1x Sağlık İksiri, 8 Gümüş Sikke | Yetenekler/Büyüler: Alev Oku (1d10 hasar), Sihirli Füze (3x 1d4+1 hasar), Kalkan (+5 Zırh Sınıfı).',
-            '3. Hırsız: 16 HP | Ekipman: 2x Çelik Hançer, Maymuncuk Seti, Hırsız Giysisi, Halat (10m), 12 Gümüş Sikke | Yetenekler: Sinsi Saldırı (+2d6 hasar), Kurnaz Eylem (saklanma/kaçma).',
-            '4. Rahip: 18 HP | Ekipman: Gümüş Topuz, Kutsal Sembol, Zırhlı Cübbe, 2x Kutsal Su, 6 Gümüş Sikke | Yetenekler/Büyüler: Yaraları İyileştir (1d8+Bilgelik iyileştirme), İlahi Tarama (yakındaki kutsal/tekinsiz varlıkları sezer), Kutsama (zarlara +1d4 ekler).',
-            '5. Korucu: 18 HP | Ekipman: Uzun Yay, Kısa Kılıç, Deri Zırh, Ok Kını (20 Ok), 7 Gümüş Sikke | Yetenekler: Avcının Markası (hedefe fazladan hasar), Keskin Göz (dikkat ve algı testlerinde kolaylık).',
-            '6. Paladin: 22 HP | Ekipman: Büyük Kılıç, Kutsal Sembol, Zincir Zırh, 1x İyileştirme İksiri, 6 Gümüş Sikke | Yetenekler: Kutsal Darbe (ekstra kutsal hasar), Sağaltıcı Dokunuş (can iyileştirme).',
-            '7. Ozan: 16 HP | Ekipman: Lut (Müzik Aleti), Hançer, Deri Ceket, Diplomasi Belgesi, 9 Gümüş Sikke | Yetenekler/Büyüler: Ozan İlhamı (arkadaşına zarda bonus verir), Kakofoni (gürültülü hasar büyüsü), Tasha Kahkahası (hedefi gülme krizine sokarak saf dışı bırakır).',
-            '8. Barbar: 28 HP | Ekipman: Çift Elli Savaş Baltası, Fırlatma Baltası, Kürk Giysiler, Matara, 4 Gümüş Sikke | Yetenekler: Öfke (alınan hasarı azaltır, vurulan hasarı artırır), Pervasız Saldırı (avantajlı ama riskli saldırı).',
-            '9. Keşiş: 18 HP | Ekipman: Ahşap Asa, Fırlatma Bıçakları, Basit Keşiş Cübbesi, Bitki Çayı, 4 Gümüş Sikke | Yetenekler: Ki Darbesi (silahsız ekstra hızlı vuruşlar), Sabır Savunması (gelen saldırıları savuşturma).',
-            '10. Warlock: 16 HP | Ekipman: Karanlık Asa, Kadim Kitap, Gölgeli Cübbe, 1x Ruh Taşı, 7 Gümüş Sikke | Yetenekler/Büyüler: Mistik Patlama (güçlü büyü atışı), Cehennem Azabı (tepki olarak alev hasarı), Karanlık Görüş (karanlıkta görme).',
-            '11. Druid: 18 HP | Ekipman: Sarmaşık Asa, Şifalı Bitki Çantası, Deri Cübbe, Doğa Sembolü, 5 Gümüş Sikke | Yetenekler/Büyüler: Doğal Form (Kurt formuna dönüşür), Diken Büyümesi (alanı dikenlerle kaplar), İyileştirici Esinti (can yeniler).'
+            '1. Savaşçı: 24 HP | Çanta: Çelik Kılıç, Kalkan, Deri Zırh, 2x Meşale, 5 Gümüş Sikke | Yetenekler: İkinci Soluk (1d10 + Seviye can yeniler), Savaş Narası (fazladan aksiyon).',
+            '2. Büyücü: 14 HP | Çanta: Büyücü Asası, Büyü Kitabı, Basit Cübbe, 1x Sağlık İksiri, 8 Gümüş Sikke | Yetenekler/Büyüler: Alev Oku (1d10 hasar), Sihirli Füze (3x 1d4+1 hasar), Kalkan (+5 Zırh Sınıfı).',
+            '3. Hırsız: 16 HP | Çanta: 2x Çelik Hançer, Maymuncuk Seti, Hırsız Giysisi, Halat (10m), 12 Gümüş Sikke | Yetenekler: Sinsi Saldırı (+2d6 hasar), Kurnaz Eylem (saklanma/kaçma).',
+            '4. Rahip: 18 HP | Çanta: Gümüş Topuz, Kutsal Sembol, Zırhlı Cübbe, 2x Kutsal Su, 6 Gümüş Sikke | Yetenekler/Büyüler: Yaraları İyileştir (1d8+Bilgelik iyileştirme), İlahi Tarama (yakındaki kutsal/tekinsiz varlıkları sezer), Kutsama (zarlara +1d4 ekler).',
+            '5. Korucu: 18 HP | Çanta: Uzun Yay, Kısa Kılıç, Deri Zırh, Ok Kını (20 Ok), 7 Gümüş Sikke | Yetenekler: Avcının Markası (hedefe fazladan hasar), Keskin Göz (dikkat ve algı testlerinde kolaylık).',
+            '6. Paladin: 22 HP | Çanta: Büyük Kılıç, Kutsal Sembol, Zincir Zırh, 1x İyileştirme İksiri, 6 Gümüş Sikke | Yetenekler: Kutsal Darbe (ekstra kutsal hasar), Sağaltıcı Dokunuş (can iyileştirme).',
+            '7. Ozan: 16 HP | Çanta: Lut (Müzik Aleti), Hançer, Deri Ceket, Diplomasi Belgesi, 9 Gümüş Sikke | Yetenekler/Büyüler: Ozan İlhamı (arkadaşına zarda bonus verir), Kakofoni (gürültülü hasar büyüsü), Tasha Kahkahası (hedefi gülme krizine sokarak saf dışı bırakır).',
+            '8. Barbar: 28 HP | Çanta: Çift Elli Savaş Baltası, Fırlatma Baltası, Kürk Giysiler, Matara, 4 Gümüş Sikke | Yetenekler: Öfke (alınan hasarı azaltır, vurulan hasarı artırır), Pervasız Saldırı (avantajlı ama riskli saldırı).',
+            '9. Keşiş: 18 HP | Çanta: Ahşap Asa, Fırlatma Bıçakları, Basit Keşiş Cübbesi, Bitki Çayı, 4 Gümüş Sikke | Yetenekler: Ki Darbesi (silahsız ekstra hızlı vuruşlar), Sabır Savunması (gelen saldırıları savuşturma).',
+            '10. Warlock: 16 HP | Çanta: Karanlık Asa, Kadim Kitap, Gölgeli Cübbe, 1x Ruh Taşı, 7 Gümüş Sikke | Yetenekler/Büyüler: Mistik Patlama (güçlü büyü atışı), Cehennem Azabı (tepki olarak alev hasarı), Karanlık Görüş (karanlıkta görme).',
+            '11. Druid: 18 HP | Çanta: Sarmaşık Asa, Şifalı Bitki Çantası, Deri Cübbe, Doğa Sembolü, 5 Gümüş Sikke | Yetenekler/Büyüler: Doğal Form (Kurt formuna dönüşür), Diken Büyümesi (alanı dikenlerle kaplar), İyileştirici Esinti (can yeniler).'
           ].join('\n');
 
           let responseText = '';
@@ -1431,17 +1590,45 @@ module.exports = {
     }
     responseText = responseText.replace(invRegex, '');
 
-    if ((addedItems.length > 0 || removedItems.length > 0) && triggeringPlayerId) {
-      const player = session.players.get(triggeringPlayerId);
-      if (player) {
-        if (!player.inventory) player.inventory = [];
-        for (const item of addedItems) {
-          player.inventory.push(item);
+    if ((addedItems.length > 0 || removedItems.length > 0)) {
+      let targetPlayerId = triggeringPlayerId;
+      if (!targetPlayerId) {
+        for (const [id, p] of session.players) {
+          if (responseText.toLowerCase().includes(p.charName.toLowerCase())) {
+            targetPlayerId = id;
+            break;
+          }
         }
-        for (const item of removedItems) {
-          const index = player.inventory.findIndex(i => i.toLowerCase() === item.toLowerCase());
-          if (index !== -1) {
-            player.inventory.splice(index, 1);
+        if (!targetPlayerId && session.players.size > 0) {
+          targetPlayerId = Array.from(session.players.keys())[0];
+        }
+      }
+      if (targetPlayerId) {
+        const player = session.players.get(targetPlayerId);
+        if (player) {
+          if (!player.inventory) player.inventory = [];
+          
+          const parseTagItem = (itemStr) => {
+            const match = itemStr.match(/^(\d+)\s*(?:x|adet)?\s*(.+)$/i);
+            if (match) {
+              return {
+                quantity: parseInt(match[1]),
+                name: match[2].trim()
+              };
+            }
+            return {
+              quantity: 1,
+              name: itemStr.trim()
+            };
+          };
+
+          for (const item of addedItems) {
+            const parsed = parseTagItem(item);
+            module.exports.updateInventory(player.inventory, parsed.name, parsed.quantity);
+          }
+          for (const item of removedItems) {
+            const parsed = parseTagItem(item);
+            module.exports.updateInventory(player.inventory, parsed.name, -parsed.quantity);
           }
         }
       }
@@ -1593,8 +1780,8 @@ module.exports = {
           const changeSign = updates.goldChanges >= 0 ? '+' : '';
           footerParts.push(`💰 Sikke: ${changeSign}${formatCoins(updates.goldChanges)}`);
         }
-        if (updates.addedItems.length > 0) footerParts.push(`🎒 Alınan: ${updates.addedItems.join(', ')}`);
-        if (updates.removedItems.length > 0) footerParts.push(`🗑️ Atılan: ${updates.removedItems.join(', ')}`);
+        if (updates.addedItems.length > 0) footerParts.push(`🎒 Çantaya Eklenen: ${updates.addedItems.join(', ')}`);
+        if (updates.removedItems.length > 0) footerParts.push(`🗑️ Çantadan Çıkarılan: ${updates.removedItems.join(', ')}`);
         if (footerParts.length > 0) embed.setFooter({ text: footerParts.join(' | ') });
 
         const components = [];
