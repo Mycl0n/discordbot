@@ -754,8 +754,35 @@ module.exports = {
         return message.reply('❌ D&D oynamak için en az **1 oyuncu** katılmalıdır!');
       }
 
+      session.state = 'selecting_multiplayer';
+      return message.reply([
+        '👥 **Oyun Modu Seçimi**',
+        'Lütfen oyunu oynama biçiminizi seçin:',
+        '1️⃣ **Tek Hesap / Tek Karakter (single)**: Her Discord kullanıcısı sadece kendi karakterini kontrol eder. Çoklu oyuncu bekleme sistemi pasif olur (diğer oyuncuların yazmasını beklemeden hızlı akar).',
+        '2️⃣ **Çoklu Karakter / Ortak Hesap (multi)**: Tek bir hesap üzerinden birden fazla karakter kontrol edilebilir. Çoklu oyuncu aksiyon senkronizasyonu aktif olur.',
+        '',
+        '👉 Lütfen bu kanala doğrudan **1** (veya **tek**) ya da **2** (veya **çoklu**) yazarak seçim yapın.'
+      ].join('\n'));
+    }
+
+    // DND SEÇ MULTIPLAYER
+    if (subCommand === 'sec_multiplayer') {
+      if (!session) return;
+      if (session.creatorId !== message.author.id) {
+        return message.reply('❌ Oyun modunu sadece lobiyi kuran kişi seçebilir!');
+      }
+
+      const mode = args[1]?.toLowerCase();
+      if (!['single', 'multi'].includes(mode)) {
+        return message.reply('❌ Geçersiz oyun modu.');
+      }
+
+      session.multiplayerMode = mode;
+
       session.state = 'selecting_economy';
       return message.reply([
+        `✅ Oyun modu **${mode === 'single' ? 'Tek Hesap / Tek Karakter' : 'Çoklu Karakter / Ortak Hesap'}** olarak seçildi!`,
+        '',
         '💰 **Ekonomi Modu Seçimi**',
         'Lütfen oyun boyunca kullanılacak para yönetim biçimini seçin:',
         '1️⃣ **Ortak Cüzdan (shared)**: Tüm oyuncuların paraları tek bir havuzda birleşir, harcamalar ve kazanılan paralar bu ortak cüzdandan karşılanır.',
@@ -1024,7 +1051,7 @@ module.exports = {
       }
 
       // Check if this player already submitted an action this round
-      if (session.pendingActions) {
+      if (session.multiplayerMode !== 'single' && session.pendingActions) {
         const alreadyActed = Array.from(session.pendingActions.values()).find(a => a.player.userId === message.author.id);
         if (alreadyActed) {
           const warnMsg = await message.reply(`❌ **${alreadyActed.player.charName}** zaten bu tur aksiyonunu verdi! Diğer oyuncuların aksiyonunu bekleyin.`);
@@ -1185,8 +1212,9 @@ module.exports = {
       const totalPlayers = session.players.size;
       const actedPlayers = session.pendingActions.size;
 
-      // If not all players have acted yet, show waiting embed
-      if (actedPlayers < totalPlayers) {
+      // If multiplayerMode is 'single', or actedPlayers >= totalPlayers, we do not wait.
+      // Otherwise, show waiting embed
+      if (session.multiplayerMode !== 'single' && actedPlayers < totalPlayers) {
         const waitingFor = [];
         session.players.forEach(p => {
           if (!session.pendingActions.has(p.charName.toLowerCase())) {
