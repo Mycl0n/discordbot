@@ -12,8 +12,28 @@ module.exports = {
 
     const subCommand = args[0]?.toLowerCase();
 
-    if (!subCommand) {
-      return message.reply(`❌ Lütfen bir alt komut girin!\nKullanım: \`${prefix}dnd [basla/katil/oyna/aksiyon/durum/bitir]\``);
+    if (!subCommand || subCommand === 'help' || subCommand === 'yardim' || subCommand === 'yardım') {
+      const embed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle('🛡️ D&D Oyun Sistemi Rehberi')
+        .setDescription([
+          'Yapay zeka zindan yöneticisi (Dungeon Master) ile D&D oynamak için kullanabileceğiniz komutlar aşağıdadır:',
+          '',
+          `🔹 \`${prefix}dnd basla\` - Yeni bir macera lobisi oluşturur.`,
+          `🔹 \`${prefix}dnd katil <Karakter Adı> <Sınıf>\` - Karakterinizle lobiye katılır.`,
+          `  *(Sınıflar: Savasci, Buyucu, Hirsiz, Rahip)*`,
+          `🔹 \`${prefix}dnd oyna\` - Lobideki en az 2 oyuncu hazır olduğunda oyunu ve hikayeyi başlatır.`,
+          `🔹 \`${prefix}dnd aksiyon <eylem>\` - Karakterinizin yapmak istediği hareketi yapay zekaya iletir.`,
+          `🔹 \`${prefix}dnd durum\` - Oyuncuların Can (HP), envanter ve yetenek durumlarını listeler.`,
+          `🔹 \`${prefix}dnd bitir\` - Oturumu sonlandırır ve lobi verilerini sıfırlar.`,
+          '',
+          '🎲 **Yetenek Zarı Testleri:**',
+          'Yapay zeka bir eyleminiz karşılığında zar atmanızı istediğinde sohbette otomatik olarak **🎲 Zar At** butonu belirecektir. Butona basarak zarı atabilirsiniz.'
+        ].join('\n'))
+        .setTimestamp()
+        .setFooter({ text: 'Dungeons & Dragons AI' });
+
+      return message.reply({ embeds: [embed] });
     }
 
     const guildId = message.guild.id;
