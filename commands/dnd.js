@@ -100,8 +100,10 @@ module.exports = {
         .setTitle('🛡️ D&D Macera Lobisi Kuruldu!')
         .setDescription([
           'Yeni bir yapay zeka yönetimli D&D macerası başlıyor!',
-          `Katılmak için aşağıdaki komutu kullanın:`,
-          `\`${prefix}dnd katıl <Karakter Adı> <Sınıf>\``,
+          '',
+          '🎮 **Nasıl Katılırsınız?**',
+          'Bu kanala doğrudan karakter adınızı ve sınıfınızı yazın:',
+          '👉 **`<Karakter Adı> <Sınıf>`** *(Örn: `Arda Hirsiz`)*',
           '',
           '**Seçilebilir Sınıflar & Yetenekleri:**',
           '⚔️ **Savasci** (Kuvvet +3, Dayanıklılık +2, Zeka -1)',
@@ -110,7 +112,7 @@ module.exports = {
           '☀️ **Rahip** (Bilgelik +3, Dayanıklılık +2, El Becerisi -1)',
           '',
           '*Oyuna başlayabilmek için en az **1 oyuncunun** katılması gerekmektedir.*',
-          ` Lobiyi kuran kişi (\`${prefix}dnd oyna\`) yazarak oyunu başlatabilir.`
+          '🚀 Lobiyi kuran kişi bu kanala doğrudan **`başlat`** yazarak oyunu başlatabilir.'
         ].join('\n'))
         .setTimestamp()
         .setFooter({ text: 'Dungeons & Dragons AI' });
@@ -135,11 +137,19 @@ module.exports = {
         return message.reply('❌ Oyun zaten başladı! Yeni bir oyuna girmek için mevcut oyunun bitmesini bekleyin.');
       }
 
-      const charName = args[1];
-      const charClassInput = args[2]?.toLowerCase();
+      let charName = '';
+      let charClassInput = '';
+
+      if (args.length > 3) {
+        charClassInput = args[args.length - 1].toLowerCase();
+        charName = args.slice(1, args.length - 1).join(' ');
+      } else {
+        charName = args[1];
+        charClassInput = args[2]?.toLowerCase();
+      }
 
       if (!charName || !charClassInput) {
-        return message.reply(`❌ Hatalı Kullanım!\nDoğru Kullanım: \`${prefix}dnd katıl <Karakter Adı> <Savasci/Buyucu/Hirsiz/Rahip>\``);
+        return message.reply(`❌ Hatalı Kullanım!\nDoğru Kullanım: \`${prefix}dnd katıl <Karakter Adı> <Sınıf>\``);
       }
 
       if (session.players.has(message.author.id)) {
@@ -186,22 +196,57 @@ module.exports = {
       return message.reply(`✅ **${charName}** (${displayClass}) olarak lobiye katıldın! Lobideki toplam oyuncu sayısı: **${session.players.size}**`);
     }
 
-    // 3. DND OYNA
-    if (subCommand === 'oyna' || subCommand === 'play') {
+    // DND BAŞLA TEMA (Lobi kurucusu 'başlat' yazınca burası tetiklenir)
+    if (subCommand === 'basla_tema') {
+      if (!session) return;
+      if (session.creatorId !== message.author.id) {
+        return message.reply('❌ Oyunu sadece lobiyi kuran kişi başlatabilir!');
+      }
+      if (session.players.size < 1) {
+        return message.reply('❌ D&D oynamak için en az **1 oyuncu** katılmalıdır!');
+      }
+
+      session.state = 'selecting_theme';
+      return message.reply([
+        '🔮 **Tema & Evren Seçimi**',
+        `Maceranın geçmesini istediğiniz temayı veya evreni bu kanala doğrudan yazın (Örn: *Ortaçağ fantastik*, *Cyberpunk*, *Kıyamet sonrası metro tünelleri* vb.).`,
+        'Yapay zeka zindan yöneticisi dünyayı bu temaya göre şekillendirecektir.'
+      ].join('\n'));
+    }
+
+    // 3. DND OYNA / TEMA_SEC
+    if (subCommand === 'oyna' || subCommand === 'play' || subCommand === 'tema_sec') {
       if (!session) {
         return message.reply('❌ Aktif bir lobi veya oyun bulunmuyor!');
       }
 
-      if (session.state !== 'lobby') {
+      if (session.state !== 'lobby' && session.state !== 'selecting_theme') {
         return message.reply('❌ Oyun zaten başladı!');
       }
 
-      if (session.creatorId !== message.author.id) {
-        return message.reply('❌ Oyunu sadece lobiyi kuran kişi başlatabilir!');
+      if (session.creatorId !== message.author.id && !session.players.has(message.author.id)) {
+        return message.reply('❌ Bu işlemi sadece oyunculardan biri gerçekleştirebilir!');
       }
 
       if (session.players.size < 1) {
         return message.reply('❌ D&D oynamak için en az **1 oyuncu** katılmalıdır!');
+      }
+
+      // If called via prefix without args, ask for theme first
+      if (subCommand === 'oyna' && args.length === 1) {
+        session.state = 'selecting_theme';
+        return message.reply([
+          '🔮 **Tema & Evren Seçimi**',
+          `Maceranın geçmesini istediğiniz temayı veya evreni bu kanala doğrudan yazın (Örn: *Ortaçağ fantastik*, *Cyberpunk*, *Kıyamet sonrası metro tünelleri* vb.).`
+        ].join('\n'));
+      }
+
+      // Get theme text
+      let themeText = 'Ortaçağ Fantastik Zindanı';
+      if (subCommand === 'tema_sec') {
+        themeText = args.slice(1).join(' ');
+      } else if (subCommand === 'oyna' && args.length > 1) {
+        themeText = args.slice(1).join(' ');
       }
 
       if (!process.env.GEMINI_API_KEY) {
@@ -223,7 +268,7 @@ module.exports = {
           '3. ZAR TALEP ETME KURALLARI (KRİTİK):',
           '   - Bir durum veya oda/ortam tasvir ederken, ya da yeni bir canavar/tuzak tanıtırken KESİNLİKLE zar testi isteme. Sadece "Ne yapıyorsun?" veya "Ne yapıyorsunuz?" diye sor.',
           '   - Bir zar testi yapıldıktan ve sonucunu açıkladıktan sonra, aynı mesajda KESİNLİKLE yeni bir zar testi isteme. Sonucu anlat, ortamın son durumunu belirt ve "Ne yapıyorsun?" diyerek sırayı oyuncuya devret.',
-          '   - Yalnızca oyuncu "a!dnd aksiyon" komutuyla riskli, tehlikeli veya başarısızlık ihtimali olan bir eylem gerçekleştirdiğinde o eylemi çözümlemek için zar iste.',
+          '   - Yalnızca oyuncu "a!dnd aksiyon" komutuyla veya doğrudan mesajla riskli, tehlikeli veya başarısızlık ihtimali olan bir eylem gerçekleştirdiğinde o eylemi çözümlemek için zar iste.',
           '   - Eğer oyuncunun eylemi basit, güvenli veya sıradan bir eylemse (Örn: etrafa bakmak, kapıyı kilitli/tuzaklı değilse açmak, güvenli bir şekilde yürümek) zar isteme, sonucu doğrudan anlat ve bir sonraki hamleyi sor.',
           '4. ZAR İSTEME FORMATI: Zar istemek için mesajın EN SONUNA tam olarak şu formatta ekleme yap: `[Zar: Yetenek]`. Yetenek şunlardan biri olmalıdır: Kuvvet, Dayanıklılık, El Becerisi, Zeka, Bilgelik, Karizma. Yeteneği Türkçe yaz.',
           '   Eğer zar istemiyorsan, mesajında kesinlikle `[Zar: Yetenek]` ifadesi yer almamalıdır.',
@@ -236,10 +281,12 @@ module.exports = {
         }).join('\n');
 
         const initialPrompt = [
+          `Maceranın Teması/Evreni: ${themeText}`,
+          '',
           'Macera Başlıyor! Oyuncularımız ve karakterleri şunlar:',
           playerDetails,
           '',
-          'Lütfen oyuncuları fantastik bir dünyada (örneğin karanlık bir zindan girişi, gizemli bir orman patikası veya tekinsiz bir taverna) başlat. Ortamı anlat ve ilk hamlelerini sor.'
+          'Lütfen oyuncuları bu temaya uygun fantastik/bilimkurgu/tematik bir dünyada başlat. Ortamı detaylıca tasvir et ve ilk hamlelerini sor.'
         ].join('\n');
 
         const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
@@ -304,7 +351,7 @@ module.exports = {
           components.push(new ActionRowBuilder().addComponents(button));
         }
 
-        await message.reply({ embeds: [embed], components: components });
+        await message.channel.send({ embeds: [embed], components: components });
 
       } catch (error) {
         console.error('D&D Start Error:', error);
