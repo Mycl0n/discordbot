@@ -223,7 +223,11 @@ async function playSong(guild, song, client) {
     // Register FFMPEG_PATH for @discordjs/voice/prism-media
     process.env.FFMPEG_PATH = ffmpeg;
 
-    const binaryPath = path.join(__dirname, '../yt-dlp.exe');
+    // Detect platform and determine executable path
+    const isWindows = process.platform === 'win32';
+    const binaryPath = isWindows 
+      ? path.join(__dirname, '../yt-dlp.exe') 
+      : 'yt-dlp'; // Use global yt-dlp command on Linux/macOS
     
     // Spawn yt-dlp to stream audio to stdout
     const ytdlp = spawn(binaryPath, [
@@ -237,6 +241,11 @@ async function playSong(guild, song, client) {
 
     ytdlp.on('error', (err) => {
       console.error('yt-dlp process error:', err);
+      if (err.code === 'ENOENT') {
+        queue.textChannel.send('❌ Sunucuda **yt-dlp** bulunamadı! Lütfen VPS sunucunuza `yt-dlp` kurulumu yapın.');
+      } else {
+        queue.textChannel.send(`❌ Ses akışı başlatılırken bir hata oluştu: ${err.message}`);
+      }
     });
 
     ytdlp.stderr.on('data', (data) => {
