@@ -1282,10 +1282,20 @@ module.exports = {
         if (match) {
           const ability = match[1];
           const difficulty = match[2] ? parseInt(match[2]) : 10;
+          
+          // Determine who should roll based on the description text, or fallback to the triggering player
+          let rollerCharName = player.charName.toLowerCase();
+          for (const [id, p] of session.players) {
+            if (updates.responseText.toLowerCase().includes(p.charName.toLowerCase())) {
+              rollerCharName = p.charName.toLowerCase();
+              break;
+            }
+          }
+
           session.pendingRoll = {
             ability: ability,
             difficulty: difficulty,
-            playerId: player.charName.toLowerCase()
+            playerId: rollerCharName
           };
 
           const button = new ButtonBuilder()
