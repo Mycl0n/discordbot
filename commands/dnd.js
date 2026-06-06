@@ -92,7 +92,8 @@ module.exports = {
         players: new Map(), // userId -> character
         chat: null,
         pendingRoll: null,
-        textChannel: dndChannel
+        textChannel: dndChannel,
+        client: client
       });
 
       const embed = new EmbedBuilder()
@@ -159,27 +160,45 @@ module.exports = {
       let modifiers = {};
       let maxHp = 20;
       let displayClass = '';
+      let gold = 50;
+      let inventory = [];
+      let spells = [];
 
       if (['savasci', 'savaşçı', 'warrior', 'fighter'].includes(charClassInput)) {
         displayClass = 'Savaşçı';
         maxHp = 24;
         modifiers = { Kuvvet: 3, Dayanıklılık: 2, 'El Becerisi': 1, Zeka: -1, Bilgelik: 0, Karizma: 0 };
+        gold = 50;
+        inventory = ['Çelik Kılıç', 'Kalkan', 'Deri Zırh', '2x Meşale'];
+        spells = ['İkinci Soluk', 'Savaş Narası'];
       } else if (['buyucu', 'büyücü', 'mage', 'wizard'].includes(charClassInput)) {
         displayClass = 'Büyücü';
         maxHp = 14;
         modifiers = { Zeka: 3, Bilgelik: 2, 'El Becerisi': 1, Kuvvet: -1, Dayanıklılık: 0, Karizma: 0 };
+        gold = 80;
+        inventory = ['Büyücü Asası', 'Büyü Kitabı', 'Basit Cübbe', '1x Sağlık İksiri'];
+        spells = ['Alev Oku', 'Sihirli Füze', 'Kalkan'];
       } else if (['hirsiz', 'hırsız', 'rogue', 'thief'].includes(charClassInput)) {
         displayClass = 'Hırsız';
         maxHp = 16;
         modifiers = { 'El Becerisi': 3, Karizma: 2, Zeka: 1, Kuvvet: 0, Bilgelik: 0, Dayanıklılık: -1 };
+        gold = 120;
+        inventory = ['2x Çelik Hançer', 'Maymuncuk Seti', 'Hırsız Giysisi', 'Halat (10m)'];
+        spells = ['Sinsi Saldırı', 'Kurnaz Eylem'];
       } else if (['rahip', 'cleric', 'priest'].includes(charClassInput)) {
         displayClass = 'Rahip';
         maxHp = 18;
         modifiers = { Bilgelik: 3, Dayanıklılık: 2, Karizma: 1, Zeka: 0, Kuvvet: 1, 'El Becerisi': -1 };
+        gold = 60;
+        inventory = ['Gümüş Topuz', 'Kutsal Sembol', 'Zırhlı Cübbe', '2x Kutsal Su'];
+        spells = ['Yaraları İyileştir', 'İlahi Tarama', 'Kutsama'];
       } else {
         displayClass = charClassInput.charAt(0).toUpperCase() + charClassInput.slice(1);
         maxHp = 20;
         modifiers = { Kuvvet: 1, Dayanıklılık: 1, 'El Becerisi': 1, Zeka: 1, Bilgelik: 1, Karizma: 1 };
+        gold = 50;
+        inventory = ['Basit Ekipmanlar'];
+        spells = ['Temel Hamle'];
       }
 
       session.players.set(message.author.id, {
@@ -190,10 +209,28 @@ module.exports = {
         hp: maxHp,
         maxHp: maxHp,
         modifiers: modifiers,
-        inventory: ['Sağlık İksiri', 'Basit Ekipmanlar']
+        inventory: inventory,
+        spells: spells,
+        gold: gold,
+        level: 1,
+        xp: 0
       });
 
-      return message.reply(`✅ **${charName}** (${displayClass}) olarak lobiye katıldın! Lobideki toplam oyuncu sayısı: **${session.players.size}**`);
+      const joinEmbed = new EmbedBuilder()
+        .setColor('#57F287')
+        .setTitle('✅ Karakter Kaydedildi!')
+        .setDescription([
+          `**Karakter:** **${charName}** (${displayClass})`,
+          `❤️ **Can (HP):** ${maxHp}/${maxHp}`,
+          `💰 **Altın:** ${gold} Altın`,
+          `🎒 **Ekipmanlar:** ${inventory.join(', ')}`,
+          `🔮 **Yetenekler & Büyüler:** ${spells.join(', ')}`,
+          '',
+          `*Lobideki toplam oyuncu sayısı: **${session.players.size}***`
+        ].join('\n'))
+        .setTimestamp();
+
+      return message.reply({ embeds: [joinEmbed] });
     }
 
     // DND BAŞLA TEMA (Lobi kurucusu 'başlat' yazınca burası tetiklenir)
@@ -388,32 +425,61 @@ module.exports = {
         const prompt = `[Oyuncu Hamlesi] Karakter: ${player.charName} (${player.class}) | Eylem: ${actionText}`;
         const { responseText } = await module.exports.sendMessageWithFallback(session, prompt);
 
-        const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)\]/i;
-        const match = responseText.match(rollRegex);
+        // Parse state updates (gold, HP, inventory, combat)
+        const updates = module.exports.parseStateUpdates(session, responseText, message.author.id);
+
+        const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)(?:,\s*Zorluk:\s*(\d+))?\]/i;
+        const match = updates.responseText.match(rollRegex);
 
         const embed = new EmbedBuilder()
-          .setColor('#5865F2')
-          .setTitle('🛡️ Dungeon Master')
-          .setDescription(responseText.replace(rollRegex, '').trim())
+          .setColor(session.state === 'combat' ? '#ED4245' : '#5865F2')
+          .setTitle(session.state === 'combat' ? '⚔️ Savaş - Dungeon Master' : '🛡️ Dungeon Master')
+          .setDescription(updates.responseText.replace(rollRegex, '').trim())
           .setTimestamp();
+
+        // Print changes footer if any
+        let footerParts = [];
+        if (updates.hpChanges !== 0) footerParts.push(`💔 HP: ${updates.hpChanges >= 0 ? '+' : ''}${updates.hpChanges}`);
+        if (updates.goldChanges !== 0) footerParts.push(`💰 Altın: ${updates.goldChanges >= 0 ? '+' : ''}${updates.goldChanges}`);
+        if (updates.addedItems.length > 0) footerParts.push(`🎒 Alınan: ${updates.addedItems.join(', ')}`);
+        if (updates.removedItems.length > 0) footerParts.push(`🗑️ Atılan: ${updates.removedItems.join(', ')}`);
+        if (footerParts.length > 0) embed.setFooter({ text: footerParts.join(' | ') });
 
         const components = [];
         if (match) {
           const ability = match[1];
+          const difficulty = match[2] ? parseInt(match[2]) : 10;
           session.pendingRoll = {
             ability: ability,
+            difficulty: difficulty,
             playerId: message.author.id
           };
 
           const button = new ButtonBuilder()
             .setCustomId(`dnd_roll_${ability}`)
-            .setLabel(`🎲 ${ability} Zarı At (1d20)`)
-            .setStyle(ButtonStyle.Primary);
+            .setLabel(`🎲 ${ability} Zarı At (1d20) - DC ${difficulty}`)
+            .setStyle(session.state === 'combat' ? ButtonStyle.Danger : ButtonStyle.Primary);
 
           components.push(new ActionRowBuilder().addComponents(button));
         }
 
         await message.reply({ embeds: [embed], components: components });
+
+        // Trigger combat or advance turn order
+        if (updates.combatTriggered && session.state !== 'combat') {
+          module.exports.initializeCombat(session, updates.enemyText);
+          const combatEmbed = module.exports.getCombatOrderEmbed(session);
+          await session.textChannel.send({ embeds: [combatEmbed] });
+          await module.exports.advanceTurn(session);
+        } else if (session.state === 'combat') {
+          if (updates.responseText.toLowerCase().includes('[savaş: bitti]') || updates.responseText.toLowerCase().includes('[savas: bitti]')) {
+            session.state = 'playing';
+            session.combat = null;
+            await session.textChannel.send('🏆 **Savaş Bitti! Düşmanlar temizlendi.**');
+          } else if (!match) {
+            await module.exports.advanceTurn(session);
+          }
+        }
 
       } catch (error) {
         console.error('D&D Action Error:', error);
@@ -435,10 +501,13 @@ module.exports = {
       session.players.forEach(p => {
         const mods = Object.entries(p.modifiers).map(([k, v]) => `${k}: ${v >= 0 ? '+' : ''}${v}`).join(', ');
         embed.addFields({
-          name: `👤 ${p.charName} (${p.class})`,
+          name: `👤 ${p.charName} (${p.class}) - Seviye ${p.level || 1}`,
           value: [
             `❤️ **Can (HP):** ${p.hp}/${p.maxHp}`,
-            `🎒 **Envanter:** ${p.inventory.join(', ')}`,
+            `✨ **Tecrübe (XP):** ${p.xp || 0} XP`,
+            `💰 **Altın:** ${p.gold || 0} Altın`,
+            `🎒 **Ekipmanlar:** ${p.inventory.join(', ')}`,
+            `🔮 **Yetenekler & Büyüler:** ${(p.spells || []).join(', ') || 'Yok'}`,
             `📊 **Modifikatörler:** \`${mods}\``
           ].join('\n')
         });
@@ -553,5 +622,264 @@ module.exports = {
     }
 
     throw lastError || new Error('Tüm yapay zeka modelleri başarısız oldu.');
+  },
+  parseStateUpdates(session, text, triggeringPlayerId) {
+    let responseText = text;
+
+    // 1. Parse Gold: [Altın: +50] or [Altın: -10]
+    const goldRegex = /\[Altın:\s*([+-]\d+)\]/gi;
+    let goldMatch;
+    let goldChanges = 0;
+    while ((goldMatch = goldRegex.exec(responseText)) !== null) {
+      goldChanges += parseInt(goldMatch[1]);
+    }
+    responseText = responseText.replace(goldRegex, '');
+
+    if (goldChanges !== 0 && triggeringPlayerId) {
+      const player = session.players.get(triggeringPlayerId);
+      if (player) {
+        player.gold = Math.max(0, (player.gold || 0) + goldChanges);
+      }
+    }
+
+    // 2. Parse Can (HP): [Can: -5] or [Can: +10]
+    const hpRegex = /\[Can:\s*([+-]\d+)\]/gi;
+    let hpMatch;
+    let hpChanges = 0;
+    while ((hpMatch = hpRegex.exec(responseText)) !== null) {
+      hpChanges += parseInt(hpMatch[1]);
+    }
+    responseText = responseText.replace(hpRegex, '');
+
+    if (hpChanges !== 0) {
+      let targetPlayerId = triggeringPlayerId;
+      if (!targetPlayerId) {
+        for (const [id, p] of session.players) {
+          if (responseText.toLowerCase().includes(p.charName.toLowerCase())) {
+            targetPlayerId = id;
+            break;
+          }
+        }
+        if (!targetPlayerId && session.players.size > 0) {
+          targetPlayerId = Array.from(session.players.keys())[0];
+        }
+      }
+      if (targetPlayerId) {
+        const player = session.players.get(targetPlayerId);
+        if (player) {
+          player.hp = Math.max(0, Math.min(player.maxHp, (player.hp || player.maxHp) + hpChanges));
+        }
+      }
+    }
+
+    // 3. Parse Inventory additions/removals: [Envanter: +Yakut]
+    const invRegex = /\[Envanter:\s*([+-])([^\]]+)\]/gi;
+    let invMatch;
+    let addedItems = [];
+    let removedItems = [];
+    while ((invMatch = invRegex.exec(responseText)) !== null) {
+      const operation = invMatch[1];
+      const itemName = invMatch[2].trim();
+      if (operation === '+') {
+        addedItems.push(itemName);
+      } else {
+        removedItems.push(itemName);
+      }
+    }
+    responseText = responseText.replace(invRegex, '');
+
+    if ((addedItems.length > 0 || removedItems.length > 0) && triggeringPlayerId) {
+      const player = session.players.get(triggeringPlayerId);
+      if (player) {
+        if (!player.inventory) player.inventory = [];
+        for (const item of addedItems) {
+          player.inventory.push(item);
+        }
+        for (const item of removedItems) {
+          const index = player.inventory.findIndex(i => i.toLowerCase() === item.toLowerCase());
+          if (index !== -1) {
+            player.inventory.splice(index, 1);
+          }
+        }
+      }
+    }
+
+    // 4. Parse Combat Initializer: [Savaş: 1x Vahşi Kurt]
+    const combatRegex = /\[Savaş:\s*([^\]]+)\]/gi;
+    const combatMatch = combatRegex.exec(responseText);
+    let combatTriggered = false;
+    let enemyText = '';
+    if (combatMatch) {
+      enemyText = combatMatch[1].trim();
+      if (enemyText.toLowerCase() !== 'bitti' && enemyText.toLowerCase() !== 'end') {
+        combatTriggered = true;
+      }
+      responseText = responseText.replace(combatRegex, '');
+    }
+
+    return {
+      responseText: responseText.trim(),
+      goldChanges,
+      hpChanges,
+      addedItems,
+      removedItems,
+      combatTriggered,
+      enemyText
+    };
+  },
+  initializeCombat(session, enemyText) {
+    session.state = 'combat';
+
+    const enemies = [];
+    const parts = enemyText.split(',');
+    for (const part of parts) {
+      const match = part.trim().match(/^(?:(\d+)x\s*)?(.+)$/i);
+      if (match) {
+        const count = match[1] ? parseInt(match[1]) : 1;
+        const name = match[2].trim();
+        for (let i = 0; i < count; i++) {
+          enemies.push({
+            name: count > 1 ? `${name} ${i + 1}` : name,
+            hp: 15,
+            maxHp: 15,
+            modifier: 1
+          });
+        }
+      }
+    }
+
+    const order = [];
+    session.players.forEach(p => {
+      const dexMod = p.modifiers['El Becerisi'] || 0;
+      const d20 = Math.floor(Math.random() * 20) + 1;
+      order.push({
+        type: 'player',
+        id: p.userId,
+        name: p.charName,
+        initiative: d20 + dexMod,
+        dex: dexMod
+      });
+    });
+
+    enemies.forEach((enemy, index) => {
+      const d20 = Math.floor(Math.random() * 20) + 1;
+      order.push({
+        type: 'enemy',
+        index: index,
+        name: enemy.name,
+        initiative: d20 + enemy.modifier,
+        dex: enemy.modifier
+      });
+    });
+
+    order.sort((a, b) => {
+      if (b.initiative !== a.initiative) {
+        return b.initiative - a.initiative;
+      }
+      return b.dex - a.dex;
+    });
+
+    session.combat = {
+      enemies: enemies,
+      order: order,
+      turnIndex: 0
+    };
+
+    return order;
+  },
+  getCombatOrderEmbed(session) {
+    const orderList = session.combat.order.map((e, idx) => {
+      const prefix = idx === session.combat.turnIndex ? '👉 ' : '   ';
+      const typeIcon = e.type === 'player' ? '👤' : '👾';
+      return `${prefix}${idx + 1}. ${typeIcon} **${e.name}** (Girişim: ${e.initiative})`;
+    }).join('\n');
+
+    return new EmbedBuilder()
+      .setColor('#ED4245')
+      .setTitle('⚔️ Savaş Başladı! (BG3 Sıra Tabanlı Sıralama)')
+      .setDescription([
+        'Sıra tabanlı dövüş düzenine geçildi! Girişim (Initiative) zarları otomatik atıldı:',
+        '',
+        orderList,
+        '',
+        `⚡ Sıradaki eylem hakkı: **${session.combat.order[session.combat.turnIndex].name}**`
+      ].join('\n'))
+      .setTimestamp();
+  },
+  async advanceTurn(session) {
+    if (!session.combat) return;
+
+    session.combat.turnIndex = (session.combat.turnIndex + 1) % session.combat.order.length;
+
+    const currentTurn = session.combat.order[session.combat.turnIndex];
+    if (currentTurn.type === 'enemy') {
+      await session.textChannel.send(`⚔️ **Sıra ${currentTurn.name} (Düşman) tarafında...**`);
+      await session.textChannel.sendTyping();
+
+      try {
+        const prompt = `[SİSTEM MESAJI - Savaş Sırası]: Sıra düşman ${currentTurn.name}'da. ${currentTurn.name} şu anki duruma göre oyunculara saldırmak için ne yapıyor? Lütfen onun eylemini anlat, hasar verdiyse [Can: -X] etiketiyle can düşür ve hedef oyuncudan savunma/savuşturma zarı iste. Format: [Zar: El Becerisi, Zorluk: 12] vb.`;
+        const { responseText } = await module.exports.sendMessageWithFallback(session, prompt);
+
+        const updates = module.exports.parseStateUpdates(session, responseText, null);
+
+        const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)(?:,\s*Zorluk:\s*(\d+))?\]/i;
+        const match = updates.responseText.match(rollRegex);
+
+        const embed = new EmbedBuilder()
+          .setColor('#ED4245')
+          .setTitle(`⚔️ ${currentTurn.name} Hamlesi`)
+          .setDescription(updates.responseText.replace(rollRegex, '').trim())
+          .setTimestamp();
+
+        let footerParts = [];
+        if (updates.hpChanges !== 0) footerParts.push(`💔 HP: ${updates.hpChanges >= 0 ? '+' : ''}${updates.hpChanges}`);
+        if (updates.goldChanges !== 0) footerParts.push(`💰 Altın: ${updates.goldChanges >= 0 ? '+' : ''}${updates.goldChanges}`);
+        if (updates.addedItems.length > 0) footerParts.push(`🎒 Alınan: ${updates.addedItems.join(', ')}`);
+        if (updates.removedItems.length > 0) footerParts.push(`🗑️ Atılan: ${updates.removedItems.join(', ')}`);
+        if (footerParts.length > 0) embed.setFooter({ text: footerParts.join(' | ') });
+
+        const components = [];
+        if (match) {
+          const nextAbility = match[1];
+          const nextDifficulty = match[2] ? parseInt(match[2]) : 10;
+
+          let targetPlayerId = null;
+          for (const [id, p] of session.players) {
+            if (updates.responseText.toLowerCase().includes(p.charName.toLowerCase())) {
+              targetPlayerId = id;
+              break;
+            }
+          }
+          if (!targetPlayerId) targetPlayerId = Array.from(session.players.keys())[0];
+
+          session.pendingRoll = {
+            ability: nextAbility,
+            difficulty: nextDifficulty,
+            playerId: targetPlayerId
+          };
+
+          const button = new ButtonBuilder()
+            .setCustomId(`dnd_roll_${nextAbility}`)
+            .setLabel(`🎲 ${nextAbility} Zarı At (1d20) - DC ${nextDifficulty}`)
+            .setStyle(ButtonStyle.Danger);
+
+          components.push(new ActionRowBuilder().addComponents(button));
+        }
+
+        await session.textChannel.send({ embeds: [embed], components: components });
+
+        if (!match) {
+          await module.exports.advanceTurn(session);
+        }
+
+      } catch (err) {
+        console.error('Failed NPC turn:', err);
+        await session.textChannel.send('❌ Canavar sırası işlenirken bir hata oluştu. Sıra geçiliyor.');
+        await module.exports.advanceTurn(session);
+      }
+    } else {
+      const activePlayer = session.players.get(currentTurn.id);
+      await session.textChannel.send(`⚔️ **Sıra sende, ${activePlayer.charName} (${activePlayer.class})!** Ne yapıyorsun? Aksiyonunu yaz.`);
+    }
   }
 };

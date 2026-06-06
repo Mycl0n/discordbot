@@ -98,6 +98,66 @@ module.exports = {
           }
           return;
         }
+
+        // 4. COMBAT STATE: Enforce Turn Order
+        if (session.state === 'combat') {
+          if (['durum', 'status'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['durum'], client);
+            } catch (err) {
+              console.error('Dnd durum hatası:', err);
+            }
+            return;
+          }
+
+          if (['bitir', 'end'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['bitir'], client);
+            } catch (err) {
+              console.error('Dnd bitir hatası:', err);
+            }
+            return;
+          }
+
+          // Check whose turn it is
+          const currentTurn = session.combat.order[session.combat.turnIndex];
+          if (currentTurn.type === 'enemy') {
+            const warnMsg = await message.reply(`❌ Şu an sıra **${currentTurn.name}** tarafında! Canavarın hamle yapmasını bekleyin.`);
+            setTimeout(async () => {
+              try { await message.delete(); } catch(e) {}
+              try { await warnMsg.delete(); } catch(e) {}
+            }, 5000);
+            return;
+          }
+
+          if (currentTurn.type === 'player' && currentTurn.id !== message.author.id) {
+            const activePlayer = session.players.get(currentTurn.id);
+            const warnMsg = await message.reply(`❌ Şu an sıra sende değil! Sıra **${activePlayer.charName}** adlı oyuncuda.`);
+            setTimeout(async () => {
+              try { await message.delete(); } catch(e) {}
+              try { await warnMsg.delete(); } catch(e) {}
+            }, 5000);
+            return;
+          }
+
+          if (session.pendingRoll) {
+            const targetPlayer = session.players.get(session.pendingRoll.playerId);
+            const warnMsg = await message.reply(`❌ Bekleyen bir zar testi var! Önce **${targetPlayer.charName}** adlı oyuncunun buton yardımıyla zar atması gerekiyor.`);
+            setTimeout(async () => {
+              try { await message.delete(); } catch(e) {}
+              try { await warnMsg.delete(); } catch(e) {}
+            }, 5000);
+            return;
+          }
+
+          // Otherwise, pass it to actions
+          try {
+            await dndCommand.execute(message, ['aksiyon', trimmedText], client);
+          } catch (err) {
+            console.error('Dnd combat aksiyon hatası:', err);
+          }
+          return;
+        }
       }
     }
 

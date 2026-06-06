@@ -71,39 +71,87 @@ module.exports = {
       await session.textChannel.sendTyping();
 
       try {
+        const difficulty = session.pendingRoll?.difficulty || 10;
+
         // Feed the roll result to the AI DM
         let prompt = `[SİSTEM MESAJI]: ${player.charName} (${player.class}) ${ability} zarı attı. `;
-        prompt += `Doğal zar: ${d20}, Toplam sonuç: ${total}. `;
+        prompt += `Doğal zar: ${d20}, Toplam sonuç: ${total} (Zorluk Sınırı/DC: ${difficulty}). `;
         if (d20 === 20) prompt += 'Kritik başarı (Natural 20) elde etti! ';
         if (d20 === 1) prompt += 'Kritik başarısızlık (Natural 1) elde etti! ';
+        if (total >= difficulty) {
+          prompt += 'Eylem BAŞARILI oldu. ';
+        } else {
+          prompt += 'Eylem BAŞARISIZ oldu. ';
+        }
         prompt += 'Lütfen bu zar sonucuna göre hikayeyi devam ettir, sonucunu anlat.';
 
         const dndCommand = client.commands.get('dnd');
         const { responseText } = await dndCommand.sendMessageWithFallback(session, prompt);
 
+        // Parse state updates
+        const updates = dndCommand.parseStateUpdates(session, responseText, playerId);
+
+        // Calculate XP & Level Up
+        let xpGained = total >= difficulty ? 5 : 2;
+        if (d20 === 20) xpGained = 10;
+
+        player.xp = (player.xp || 0) + xpGained;
+
+        let nextLevelXp = 25;
+        if (player.level === 2) nextLevelXp = 60;
+        if (player.level === 3) nextLevelXp = 120;
+
+        let levelUpMessage = '';
+        if (player.xp >= nextLevelXp) {
+          player.level = (player.level || 1) + 1;
+          player.xp = player.xp - nextLevelXp;
+
+          let hpIncrease = 5;
+          if (player.class === 'Savaşçı') hpIncrease = 6;
+          else if (player.class === 'Büyücü') hpIncrease = 4;
+          else if (player.class === 'Hırsız') hpIncrease = 5;
+          else if (player.class === 'Rahip') hpIncrease = 5;
+
+          player.maxHp = (player.maxHp || 20) + hpIncrease;
+          player.hp = player.maxHp;
+          player.modifiers[ability] = (player.modifiers[ability] || 0) + 1;
+
+          levelUpMessage = `\n\n🌟 **TEBRİKLER! SEVİYE ATLADI!** 🌟\n**${player.charName}** artık **Seviye ${player.level}**! Maksimum Canı **${player.maxHp}** HP'ye yükseldi ve **${ability}** modifikatörü **+${player.modifiers[ability]}** oldu!`;
+        }
+
         // Check if the AI wants another roll check
-        const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)\]/i;
-        const match = responseText.match(rollRegex);
+        const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)(?:,\s*Zorluk:\s*(\d+))?\]/i;
+        const match = updates.responseText.match(rollRegex);
 
         const replyEmbed = new EmbedBuilder()
-          .setColor('#5865F2')
-          .setTitle('🛡️ Dungeon Master')
-          .setDescription(responseText.replace(rollRegex, '').trim())
+          .setColor(session.state === 'combat' ? '#ED4245' : '#5865F2')
+          .setTitle(session.state === 'combat' ? '⚔️ Savaş - Dungeon Master' : '🛡️ Dungeon Master')
+          .setDescription(updates.responseText.replace(rollRegex, '').trim() + levelUpMessage)
           .setTimestamp();
+
+        // Print changes footer if any
+        let footerParts = [];
+        if (updates.hpChanges !== 0) footerParts.push(`💔 HP: ${updates.hpChanges >= 0 ? '+' : ''}${updates.hpChanges}`);
+        if (updates.goldChanges !== 0) footerParts.push(`💰 Altın: ${updates.goldChanges >= 0 ? '+' : ''}${updates.goldChanges}`);
+        if (updates.addedItems.length > 0) footerParts.push(`🎒 Alınan: ${updates.addedItems.join(', ')}`);
+        if (updates.removedItems.length > 0) footerParts.push(`🗑️ Atılan: ${updates.removedItems.join(', ')}`);
+        if (footerParts.length > 0) replyEmbed.setFooter({ text: footerParts.join(' | ') });
 
         const components = [];
         if (match) {
           const nextAbility = match[1];
-          // Set next pending roll
+          const nextDifficulty = match[2] ? parseInt(match[2]) : 10;
+
           session.pendingRoll = {
             ability: nextAbility,
-            playerId: playerId // In simple play, same player rolls next check, or we let them assign
+            difficulty: nextDifficulty,
+            playerId: playerId
           };
 
           const button = new ButtonBuilder()
             .setCustomId(`dnd_roll_${nextAbility}`)
-            .setLabel(`🎲 ${nextAbility} Zarı At (1d20)`)
-            .setStyle(ButtonStyle.Primary);
+            .setLabel(`🎲 ${nextAbility} Zarı At (1d20) - DC ${nextDifficulty}`)
+            .setStyle(session.state === 'combat' ? ButtonStyle.Danger : ButtonStyle.Primary);
 
           const row = new ActionRowBuilder().addComponents(button);
           components.push(row);
@@ -114,9 +162,25 @@ module.exports = {
           components: components
         });
 
+        // Trigger combat or advance turn order
+        if (updates.combatTriggered && session.state !== 'combat') {
+          dndCommand.initializeCombat(session, updates.enemyText);
+          const combatEmbed = dndCommand.getCombatOrderEmbed(session);
+          await session.textChannel.send({ embeds: [combatEmbed] });
+          await dndCommand.advanceTurn(session);
+        } else if (session.state === 'combat') {
+          if (updates.responseText.toLowerCase().includes('[savaş: bitti]') || updates.responseText.toLowerCase().includes('[savas: bitti]')) {
+            session.state = 'playing';
+            session.combat = null;
+            await session.textChannel.send('🏆 **Savaş Bitti! Düşmanlar temizlendi.**');
+          } else if (!match) {
+            await dndCommand.advanceTurn(session);
+          }
+        }
+
       } catch (error) {
         console.error('D&D AI Chat Error:', error);
-        await session.textChannel.send('❌ Yapay zekadan yanıt alınırken bir hata oluştu. Lütfen `a!dnd aksiyon <eylem>` yazarak tekrar deneyin.');
+        await session.textChannel.send('❌ Yapay zekadan yanıt alınırken bir hata oluştu. Lütfen komut veya aksiyon ile tekrar deneyin.');
       }
     }
   }
