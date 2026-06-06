@@ -367,9 +367,19 @@ module.exports = {
       }
       try {
         await message.channel.sendTyping();
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const result = await genAI.listModels();
-        const models = result.models.map(m => `\`${m.name}\` (Supported: ${m.supportedGenerationMethods.join(', ')})`);
+        const API_KEY = process.env.GEMINI_API_KEY;
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`);
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error.message || 'Bilinmeyen API hatası.');
+        }
+
+        if (!data.models || data.models.length === 0) {
+          throw new Error('Erişilebilir hiçbir model listelenemedi.');
+        }
+
+        const models = data.models.map(m => `\`${m.name.replace('models/', '')}\` (Desteklenenler: ${m.supportedGenerationMethods.map(met => met.replace('generateContent', 'İçerik Üretimi')).join(', ')})`);
         
         const embed = new EmbedBuilder()
           .setColor('#5865F2')
