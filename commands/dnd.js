@@ -1010,10 +1010,12 @@ module.exports = {
         return message.reply('❌ Siz bu oyundaki oyunculardan biri değilsiniz!');
       }
 
-      if (session.pendingRoll) {
-        const targetPlayer = session.players.get(session.pendingRoll.playerId);
-        const targetName = targetPlayer ? targetPlayer.charName : 'Bilinmeyen Karakter';
-        return message.reply(`❌ Bekleyen bir zar testi var! Önce **${targetName}** adlı oyuncunun buton yardımıyla zar atması gerekiyor.`);
+      if (session.pendingRolls && session.pendingRolls.length > 0) {
+        const remainingNames = session.pendingRolls.map(r => {
+          const targetPlayer = session.players.get(r.playerId);
+          return targetPlayer ? targetPlayer.charName : 'Bilinmeyen Karakter';
+        }).join(', ');
+        return message.reply(`❌ Bekleyen zar testleri var! Önce şu oyuncuların zar atması gerekiyor: **${remainingNames}**`);
       }
 
       let actionText = args.slice(1).join(' ');
@@ -1286,30 +1288,7 @@ module.exports = {
         if (hasRolls) {
           const row = new ActionRowBuilder();
           
-          // Use the first roll request for session.pendingRoll compatibility
-          const firstRoll = updates.requestedRolls[0];
-          let rollerCharName = player.charName.toLowerCase();
-          if (firstRoll.targetChar) {
-            for (const [id, p] of session.players) {
-              if (p.charName.toLowerCase() === firstRoll.targetChar.toLowerCase()) {
-                rollerCharName = p.charName.toLowerCase();
-                break;
-              }
-            }
-          } else {
-            for (const [id, p] of session.players) {
-              if (updates.responseText.toLowerCase().includes(p.charName.toLowerCase())) {
-                rollerCharName = p.charName.toLowerCase();
-                break;
-              }
-            }
-          }
-
-          session.pendingRoll = {
-            ability: firstRoll.ability,
-            difficulty: firstRoll.difficulty,
-            playerId: rollerCharName
-          };
+          if (!session.pendingRolls) session.pendingRolls = [];
 
           for (const req of updates.requestedRolls) {
             let targetId = player.charName.toLowerCase();
@@ -1331,6 +1310,13 @@ module.exports = {
 
             const targetPlayerObj = session.players.get(targetId);
             const labelName = targetPlayerObj ? targetPlayerObj.charName : req.targetChar || 'Herkes';
+
+            // Add to session list of pending rolls
+            session.pendingRolls.push({
+              ability: req.ability,
+              difficulty: req.difficulty,
+              playerId: targetId
+            });
 
             const button = new ButtonBuilder()
               .setCustomId(`dnd_roll_${req.ability}_${targetId}`)

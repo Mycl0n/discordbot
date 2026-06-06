@@ -19,12 +19,12 @@ module.exports = {
         return interaction.reply({ content: '❌ Bu oyun oturumu artık aktif değil!', ephemeral: true });
       }
 
-      if ((session.state !== 'playing' && session.state !== 'combat') || !session.pendingRoll) {
+      if ((session.state !== 'playing' && session.state !== 'combat') || !session.pendingRolls || session.pendingRolls.length === 0) {
         return interaction.reply({ content: '❌ Şu anda aktif bir zar testi bulunmamaktadır!', ephemeral: true });
       }
 
-      // If button has a specific target, use that, otherwise default to pendingRoll's playerId
-      const playerId = buttonTargetId || session.pendingRoll.playerId;
+      // If button has a specific target, use that, otherwise default to first pendingRoll's playerId
+      const playerId = buttonTargetId || session.pendingRolls[0].playerId;
       const player = session.players.get(playerId);
       if (!player) {
         return interaction.reply({ content: '❌ Karakteriniz bulunamadı!', ephemeral: true });
@@ -36,8 +36,14 @@ module.exports = {
 
       await interaction.deferUpdate();
 
-      // Clear pending roll to avoid double clicks
-      session.pendingRoll = null;
+      // Remove this specific roll from pending rolls list
+      const idx = session.pendingRolls.findIndex(r => r.playerId === playerId && r.ability === ability);
+      let activeRoll = session.pendingRolls[0];
+      if (idx !== -1) {
+        activeRoll = session.pendingRolls.splice(idx, 1)[0];
+      } else {
+        session.pendingRolls.shift();
+      }
 
       // Roll d20
       const d20 = Math.floor(Math.random() * 20) + 1;
@@ -91,7 +97,7 @@ module.exports = {
       await session.textChannel.sendTyping();
 
       try {
-        const difficulty = session.pendingRoll?.difficulty || 10;
+        const difficulty = activeRoll?.difficulty || 10;
 
         // Feed the roll result to the AI DM
         let prompt = `[SİSTEM MESAJI]: ${player.charName} (${player.class}) ${ability} zarı attı. `;

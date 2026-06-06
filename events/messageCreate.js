@@ -153,9 +153,12 @@ module.exports = {
             return;
           }
 
-          if (session.pendingRoll) {
-            const targetPlayer = session.players.get(session.pendingRoll.playerId);
-            const warnMsg = await message.reply(`❌ Bekleyen bir zar testi var! Önce **${targetPlayer.charName}** adlı oyuncunun buton yardımıyla zar atması gerekiyor.`);
+          if (session.pendingRolls && session.pendingRolls.length > 0) {
+            const remainingNames = session.pendingRolls.map(r => {
+              const targetPlayer = session.players.get(r.playerId);
+              return targetPlayer ? targetPlayer.charName : 'Bilinmeyen Karakter';
+            }).join(', ');
+            const warnMsg = await message.reply(`❌ Bekleyen zar testleri var! Önce şu oyuncuların zar atması gerekiyor: **${remainingNames}**`);
             setTimeout(async () => {
               try { await message.delete(); } catch(e) {}
               try { await warnMsg.delete(); } catch(e) {}
@@ -232,9 +235,12 @@ module.exports = {
             return;
           }
 
-          if (session.pendingRoll) {
-            const targetPlayer = session.players.get(session.pendingRoll.playerId);
-            const warnMsg = await message.reply(`❌ Bekleyen bir zar testi var! Önce **${targetPlayer.charName}** adlı oyuncunun buton yardımıyla zar atması gerekiyor.`);
+          if (session.pendingRolls && session.pendingRolls.length > 0) {
+            const remainingNames = session.pendingRolls.map(r => {
+              const targetPlayer = session.players.get(r.playerId);
+              return targetPlayer ? targetPlayer.charName : 'Bilinmeyen Karakter';
+            }).join(', ');
+            const warnMsg = await message.reply(`❌ Bekleyen zar testleri var! Önce şu oyuncuların zar atması gerekiyor: **${remainingNames}**`);
             setTimeout(async () => {
               try { await message.delete(); } catch(e) {}
               try { await warnMsg.delete(); } catch(e) {}
