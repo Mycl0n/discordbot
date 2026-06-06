@@ -628,10 +628,11 @@ module.exports = {
         console.error('ListModels Error:', error);
         return message.reply(`❌ Modeller listelenirken hata oluştu!\n**Hata Detayı:** \`${error.message}\``);
       }
+    }
 
-      // 8. DND LOBI SORU
-      if (subCommand === 'lobi_soru') {
-        if (!session) return;
+    // 8. DND LOBI SORU
+    if (subCommand === 'lobi_soru') {
+      if (!session) return;
         
         const question = args.slice(1).join(' ');
         if (!question) return;
@@ -700,7 +701,6 @@ module.exports = {
           return message.reply(`❌ Soru yanıtlanırken bir hata oluştu: \`${error.message}\``);
         }
       }
-    }
   },
   async sendMessageWithFallback(session, prompt) {
     const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
