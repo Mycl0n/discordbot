@@ -115,6 +115,15 @@ module.exports = {
             return;
           }
 
+          if (['yetenekler', 'abilities', 'yetenek', 'ability'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['yetenekler'], client);
+            } catch (err) {
+              console.error('Dnd yetenekler hatası:', err);
+            }
+            return;
+          }
+
           if (['bitir', 'end'].includes(lowerText)) {
             try {
               await dndCommand.execute(message, ['bitir'], client);
@@ -168,6 +177,15 @@ module.exports = {
               await dndCommand.execute(message, ['durum'], client);
             } catch (err) {
               console.error('Dnd durum hatası:', err);
+            }
+            return;
+          }
+
+          if (['yetenekler', 'abilities', 'yetenek', 'ability'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['yetenekler'], client);
+            } catch (err) {
+              console.error('Dnd yetenekler hatası:', err);
             }
             return;
           }

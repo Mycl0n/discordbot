@@ -1139,6 +1139,44 @@ module.exports = {
       }
     }
 
+    // 5.2 DND YETENEKLER
+    if (subCommand === 'yetenekler' || subCommand === 'abilities' || subCommand === 'yetenek' || subCommand === 'ability') {
+      if (!session) {
+        return message.reply('❌ Aktif bir lobi veya oyun bulunmuyor!');
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle('🔮 Grup Yetenek & Büyü Durumu')
+        .setDescription('Karakterlerin özel yetenekleri ve bekleme süreleri:')
+        .setTimestamp();
+
+      session.players.forEach(p => {
+        const activeAbilities = getPlayerAbilities(p.class, p.level || 1);
+        const abilityLines = activeAbilities.map(a => {
+          const cd = p.cooldowns?.[a.name];
+          let typeText = 'Süresiz';
+          if (a.type === 'short_rest') typeText = 'Kısa Rest';
+          else if (a.type === 'long_rest') typeText = 'Uzun Rest';
+          else if (a.type === 'turn') typeText = `${a.cooldown} Tur Cooldown`;
+
+          let statusText = '🟢 Kullanılabilir';
+          if (cd === 'short_rest') statusText = '🔴 Beklemede (Reşarj: Kısa Rest)';
+          else if (cd === 'long_rest') statusText = '🔴 Beklemede (Reşarj: Uzun Rest)';
+          else if (typeof cd === 'number' && cd > 0) statusText = `🔴 Beklemede (${cd} tur kaldı)`;
+
+          return `🔹 **${a.name}**\n   *Açıklama:* ${a.desc}\n   *Kullanım Türü:* \`${typeText}\` | *Durum:* ${statusText}`;
+        }).join('\n\n');
+
+        embed.addFields({
+          name: `👤 ${p.charName} (${p.class}) - Seviye ${p.level || 1}`,
+          value: abilityLines || 'Bu seviyede özel yetenek bulunmuyor.'
+        });
+      });
+
+      return message.reply({ embeds: [embed] });
+    }
+
     // 5. DND DURUM
     if (subCommand === 'durum' || subCommand === 'status') {
       if (!session) {
