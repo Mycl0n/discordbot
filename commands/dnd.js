@@ -512,7 +512,8 @@ module.exports = {
       } catch (error) {
         console.error('D&D Start Error:', error);
         client.dndGames.delete(guildId);
-        return message.reply(`❌ Oyun başlatılırken yapay zekadan hata alındı!\n**Hata Detayı:** \`${error.message}\``);
+        const errMsg = (error.message || String(error)).slice(0, 1500);
+        return message.reply(`❌ Oyun başlatılırken yapay zekadan hata alındı!\n**Hata Detayı:** \`${errMsg}\``);
       }
     }
 
@@ -653,7 +654,8 @@ module.exports = {
 
       } catch (error) {
         console.error('D&D Action Error:', error);
-        return message.reply(`❌ Yapay zekadan yanıt alınamadı.\n**Hata Detayı:** \`${error.message}\``);
+        const errMsg = (error.message || String(error)).slice(0, 1500);
+        return message.reply(`❌ Yapay zekadan yanıt alınamadı.\n**Hata Detayı:** \`${errMsg}\``);
       }
     }
 
@@ -748,7 +750,8 @@ module.exports = {
         return message.reply({ embeds: [embed] });
       } catch (error) {
         console.error('ListModels Error:', error);
-        return message.reply(`❌ Modeller listelenirken hata oluştu!\n**Hata Detayı:** \`${error.message}\``);
+        const errMsg = (error.message || String(error)).slice(0, 1500);
+        return message.reply(`❌ Modeller listelenirken hata oluştu!\n**Hata Detayı:** \`${errMsg}\``);
       }
     }
 
@@ -821,7 +824,8 @@ module.exports = {
           return message.reply({ embeds: [embed] });
         } catch (error) {
           console.error('Lobby Question Error:', error);
-          return message.reply(`❌ Soru yanıtlanırken bir hata oluştu: \`${error.message}\``);
+          const errMsg = (error.message || String(error)).slice(0, 1500);
+          return message.reply(`❌ Soru yanıtlanırken bir hata oluştu: \`${errMsg}\``);
         }
       }
   },
