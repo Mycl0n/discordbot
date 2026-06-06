@@ -192,7 +192,7 @@ module.exports = {
           'Lütfen oyuncuları fantastik bir dünyada (örneğin karanlık bir zindan girişi, gizemli bir orman patikası veya tekinsiz bir taverna) başlat. Ortamı anlat ve ilk hamlelerini sor.'
         ].join('\n');
 
-        const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro'];
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
         let chat = null;
         let responseText = '';
         let modelUsed = '';
