@@ -275,6 +275,7 @@ module.exports = {
 
         session.chat = chat;
         session.modelUsed = modelUsed;
+        session.systemInstruction = systemInstruction;
         session.state = 'playing';
 
         // Check if there is an initial roll check (unlikely but possible)
@@ -338,8 +339,7 @@ module.exports = {
 
       try {
         const prompt = `[Oyuncu Hamlesi] Karakter: ${player.charName} (${player.class}) | Eylem: ${actionText}`;
-        const result = await session.chat.sendMessage(prompt);
-        const responseText = result.response.text();
+        const { responseText } = await module.exports.sendMessageWithFallback(session, prompt);
 
         const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)\]/i;
         const match = responseText.match(rollRegex);
@@ -455,5 +455,56 @@ module.exports = {
         return message.reply(`❌ Modeller listelenirken hata oluştu!\n**Hata Detayı:** \`${error.message}\``);
       }
     }
+  },
+  async sendMessageWithFallback(session, prompt) {
+    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
+    let result = null;
+    let responseText = '';
+    let lastError = null;
+
+    // Try current model
+    try {
+      result = await session.chat.sendMessage(prompt);
+      responseText = result.response.text();
+      return { result, responseText };
+    } catch (error) {
+      console.error(`[DEBUG] D&D sendMessage failed for model ${session.modelUsed}:`, error.message);
+      lastError = error;
+    }
+
+    // Fallback: Get history and try other models
+    let history = [];
+    try {
+      history = await session.chat.getHistory();
+    } catch (historyError) {
+      console.error('[DEBUG] Failed to get chat history:', historyError);
+    }
+
+    const alternativeModels = modelsToTry.filter(m => m !== session.modelUsed);
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+    for (const modelName of alternativeModels) {
+      try {
+        console.log(`[DEBUG] Attempting fallback with model: ${modelName}`);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: session.systemInstruction
+        });
+        const fallbackChat = model.startChat({ history: history });
+        result = await fallbackChat.sendMessage(prompt);
+        responseText = result.response.text();
+
+        // Update session
+        session.chat = fallbackChat;
+        session.modelUsed = modelName;
+        console.log(`[DEBUG] Dynamic model migration successful! Switched to: ${modelName}`);
+        return { result, responseText };
+      } catch (err) {
+        console.error(`[DEBUG] Fallback model ${modelName} failed:`, err.message);
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error('Tüm yapay zeka modelleri başarısız oldu.');
   }
 };

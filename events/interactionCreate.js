@@ -78,8 +78,8 @@ module.exports = {
         if (d20 === 1) prompt += 'Kritik başarısızlık (Natural 1) elde etti! ';
         prompt += 'Lütfen bu zar sonucuna göre hikayeyi devam ettir, sonucunu anlat.';
 
-        const result = await session.chat.sendMessage(prompt);
-        const responseText = result.response.text();
+        const dndCommand = client.commands.get('dnd');
+        const { responseText } = await dndCommand.sendMessageWithFallback(session, prompt);
 
         // Check if the AI wants another roll check
         const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)\]/i;
