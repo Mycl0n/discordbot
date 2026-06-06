@@ -260,6 +260,30 @@ const CLASS_ABILITIES = {
     3: [
       { name: 'Doğanın Öfkesi', type: 'long_rest', desc: 'Doğa güçlerini bir araya getirerek düşmanları sarsar.' }
     ]
+  },
+  'Sihirbaz': {
+    1: [
+      { name: 'Alev Atışı', type: 'infinite', desc: 'Düşmana uzaktan alev fırlatır.' },
+      { name: 'Kaos Küresi', type: 'turn', cooldown: 2, desc: 'Rastgele enerji türünde hasar veren kaos küresi atar.' }
+    ],
+    2: [
+      { name: 'Büyü Puanı', type: 'short_rest', desc: 'Büyü puanlarını kullanarak büyü yuvası yeniler.' }
+    ],
+    3: [
+      { name: 'Metabüyü', type: 'long_rest', desc: 'Bir büyüyü güçlendirerek menzilini veya hasarını artırır.' }
+    ]
+  },
+  'Mucit': {
+    1: [
+      { name: 'Sihirli Çekiç', type: 'infinite', desc: 'Basit eşyalara geçici sihirli özellikler aşılar.' },
+      { name: 'Ateş Kıvılcımı', type: 'infinite', desc: 'Sanatsal bir düzenekle ateş kıvılcımı fırlatır.' }
+    ],
+    2: [
+      { name: 'Eşya Aşılama', type: 'short_rest', desc: 'Bir silah veya zırha geçici sihirli +1 bonusu kazandırır.' }
+    ],
+    3: [
+      { name: 'Sihirli Top', type: 'long_rest', desc: 'Savaşta size yardım edecek menzilli bir sihirli top kurar.' }
+    ]
   }
 };
 
@@ -467,12 +491,16 @@ module.exports = {
           '',
           '🎮 **Nasıl Katılırsınız?**',
           'Bu kanala doğrudan karakter adınızı ve sınıfınızı yazın:',
-          '👉 **`<Karakter Adı> <Sınıf>`** *(Örn: `Arda Hirsiz`)*',
+          '👉 **`<Karakter Adı> [Irk] <Sınıf>`** *(Örn: `Arda Elf Hirsiz` veya `Arda Hirsiz`)*',
           '',
           '**🎭 Seçilebilir Sınıflar:**',
           '⚔️ **Savasci** | 🧙 **Buyucu** | 🏹 **Hirsiz** | ☀️ **Rahip**',
           '🌿 **Druid** | 🛡️ **Paladin** | 🎵 **Ozan** | 🪓 **Barbar**',
-          '🎯 **Korucu** | 🥋 **Kesis** | 😈 **Warlock**',
+          '🎯 **Korucu** | 🥋 **Kesis** | 😈 **Warlock** | 🔮 **Sihirbaz** | 🔧 **Mucit**',
+          '',
+          '**🧬 Seçilebilir Irklar (opsiyonel, varsayılan: İnsan):**',
+          '🧝 Elf | ⛏️ Cüce | 👤 İnsan | 🍀 Buçukluk | 🐉 Ejderha Soylu',
+          '🧝‍♂️ Yarı-Elf | 💪 Yarı-Ork | 😈 Tiefling | 🔬 Gnom',
           '',
           '*Detaylı can, modifikatör ve çanta/yetenek paketiniz katıldığınızda açıklanacaktır.*',
           '💡 *Başlangıç eşyalarınızın veya yeteneklerinizin ne işe yaradığını sormak için oyun başlamadan önce doğrudan buraya yazabilirsiniz!*',
@@ -517,6 +545,53 @@ module.exports = {
       if (!charName || !charClassInput) {
         return message.reply(`❌ Hatalı Kullanım!\nDoğru Kullanım: \`${prefix}dnd katıl <Karakter Adı> <Sınıf>\``);
       }
+
+      // --- Race Parsing ---
+      const RACE_MAP = {
+        'elf': 'Elf',
+        'cüce': 'Cüce', 'cuce': 'Cüce', 'dwarf': 'Cüce',
+        'insan': 'İnsan', 'İnsan': 'İnsan', 'human': 'İnsan',
+        'buçukluk': 'Buçukluk', 'bucukluk': 'Buçukluk', 'halfling': 'Buçukluk',
+        'ejderha soylu': 'Ejderha Soylu', 'dragonborn': 'Ejderha Soylu', 'ejderhasoylu': 'Ejderha Soylu',
+        'yarı-elf': 'Yarı-Elf', 'yari-elf': 'Yarı-Elf', 'yarı elf': 'Yarı-Elf', 'yari elf': 'Yarı-Elf', 'half-elf': 'Yarı-Elf',
+        'yarı-ork': 'Yarı-Ork', 'yari-ork': 'Yarı-Ork', 'yarı ork': 'Yarı-Ork', 'yari ork': 'Yarı-Ork', 'half-orc': 'Yarı-Ork',
+        'tiefling': 'Tiefling',
+        'gnom': 'Gnom', 'gnome': 'Gnom'
+      };
+
+      let detectedRace = 'İnsan'; // default
+      let cleanedNameParts = charName.split(/\s+/);
+
+      // Try two-word race matches first (e.g. "Ejderha Soylu", "Yarı Elf")
+      for (let i = 0; i < cleanedNameParts.length - 1; i++) {
+        const twoWord = (cleanedNameParts[i] + ' ' + cleanedNameParts[i + 1]).toLowerCase();
+        if (RACE_MAP[twoWord]) {
+          detectedRace = RACE_MAP[twoWord];
+          cleanedNameParts.splice(i, 2);
+          break;
+        }
+        // Also try hyphenated
+        const hyphenated = (cleanedNameParts[i] + '-' + cleanedNameParts[i + 1]).toLowerCase();
+        if (RACE_MAP[hyphenated]) {
+          detectedRace = RACE_MAP[hyphenated];
+          cleanedNameParts.splice(i, 2);
+          break;
+        }
+      }
+
+      // If no two-word race found, try single-word matches
+      if (detectedRace === 'İnsan') {
+        for (let i = 0; i < cleanedNameParts.length; i++) {
+          const word = cleanedNameParts[i].toLowerCase();
+          if (RACE_MAP[word]) {
+            detectedRace = RACE_MAP[word];
+            cleanedNameParts.splice(i, 1);
+            break;
+          }
+        }
+      }
+
+      charName = cleanedNameParts.join(' ').trim() || charName;
 
       const playerKey = charName.toLowerCase();
       if (session.players.has(playerKey)) {
@@ -607,6 +682,20 @@ module.exports = {
         gold = 50;
         inventory = ['Sarmaşık Asa', 'Şifalı Bitki Çantası', 'Deri Cübbe', 'Doğa Sembolü'];
         spells = ['Doğal Form (Kurt)', 'Diken Büyümesi', 'İyileştirici Esinti'];
+      } else if (['sihirbaz', 'sorcerer', 'kan büyücüsü', 'kanbuyucusu'].includes(charClassInput)) {
+        displayClass = 'Sihirbaz';
+        maxHp = 14;
+        modifiers = { Karizma: 3, Dayanıklılık: 2, 'El Becerisi': 1, Kuvvet: -1, Bilgelik: 0, Zeka: 0 };
+        gold = 75;
+        inventory = ['Sihirli Küre', 'Sihir Asası', 'Basit Cübbe', '1x Sağlık İksiri'];
+        spells = ['Alev Atışı', 'Kaos Küresi'];
+      } else if (['mucit', 'sanatkar', 'artificer'].includes(charClassInput)) {
+        displayClass = 'Mucit';
+        maxHp = 16;
+        modifiers = { Zeka: 3, Dayanıklılık: 2, 'El Becerisi': 1, Kuvvet: -1, Bilgelik: 0, Karizma: 0 };
+        gold = 80;
+        inventory = ['Alet Çantası', 'Hafif Çapraz Yay', 'Deri Zırh', 'Tamirci Takımı'];
+        spells = ['Sihirli Çekiç', 'Ateş Kıvılcımı'];
       } else {
         displayClass = charClassInput.charAt(0).toUpperCase() + charClassInput.slice(1);
         maxHp = 20;
@@ -621,6 +710,7 @@ module.exports = {
         username: message.author.username,
         charName: charName,
         class: displayClass,
+        race: detectedRace,
         hp: maxHp,
         maxHp: maxHp,
         modifiers: modifiers,
@@ -635,7 +725,7 @@ module.exports = {
         .setColor('#57F287')
         .setTitle('✅ Karakter Kaydedildi!')
         .setDescription([
-          `**Karakter:** **${charName}** (${displayClass})`,
+          `**Karakter:** **${charName}** (${detectedRace} ${displayClass})`,
           `❤️ **Can (HP):** ${maxHp}/${maxHp}`,
           `💰 **Cüzdan (Sikke):** ${formatCoins(gold)}`,
           `🎒 **Çanta:** ${inventory.join(', ')}`,
@@ -777,12 +867,14 @@ module.exports = {
           '   - Oyuncular yeni bir eşya elde ettiğinde (örn: domuz derisi yüzme, ganimet bulma) veya bir eşya kaybettiklerinde/tükettiklerinde bunu envanter güncelleme etiketleriyle belirtmelisin.',
           '   - Format: `[Envanter: +Eşya Adı]` veya `[Envanter: -Eşya Adı]`.',
           '   - Eğer birden fazla veya miktarlı bir eşya ekleniyorsa ya da çıkarılıyorsa, miktarı belirterek yaz. Örnek: `[Envanter: +3 Domuz Eti]`, `[Envanter: +Domuz Derisi]`, `[Envanter: -1 Ok]`, `[Envanter: -1 Meşale]`. Bu etiketleri yanıtının sonuna ekle.',
-          '8. OTOMATİK ENVANTER GÜNCELLEMELERİ: Oyuncuların yay/ok kullanma, meşale yakma veya iksir içme gibi eylemleri sistem tarafından otomatik olarak envanterden düşülür. Senin bu standart tüketimler için ayrıca `[Envanter: -1 Ok]` yazmana gerek yoktur.'
+          '8. OTOMATİK ENVANTER GÜNCELLEMELERİ: Oyuncuların yay/ok kullanma, meşale yakma veya iksir içme gibi eylemleri sistem tarafından otomatik olarak envanterden düşülür. Senin bu standart tüketimler için ayrıca `[Envanter: -1 Ok]` yazmana gerek yoktur.',
+          '9. DND5E WIKIDOT ENTEGRASYONU (KRİTİK): Tüm canavarlar, büyüler, sınıflar, alt sınıflar (subclasses), ırklar, büyülü eşyalar, tuzaklar ve dövüş/keşif kuralları tamamen D&D 5e standartlarına (https://dnd5e.wikidot.com kaynağına) uygun şekilde yönetilmelidir. Oyuncular bu kaynaktaki herhangi bir özelliği, alt sınıf yeteneğini veya büyüyü kullandıklarında DM bu kurallara sadık kalmalıdır. Karşılaşılan canavarlar, NPC\'ler ve hazine eşyaları D&D 5e Monster Manual, Dungeon Master\'s Guide ve Player\'s Handbook kaynaklarına uygun olmalıdır.',
+          '10. IRK SİSTEMİ: Her oyuncunun bir ırkı vardır (Elf, Cüce, İnsan, Buçukluk, Ejderha Soylu, Yarı-Elf, Yarı-Ork, Tiefling, Gnom). Irk bilgisi oyuncu detaylarında belirtilmiştir. NPC\'lerin ve çevredeki karakterlerin oyuncuların ırklarına uygun tepkiler vermesini sağla (örn: bir Elf ormanlık bölgelerde doğal avantaja sahip olabilir, bir Tiefling bazı kasabalarda önyargıyla karşılanabilir). Irk özelliklerini D&D 5e kurallarına göre yönet.'
         ].join('\n');
 
         // Format player list for AI
         const playerDetails = Array.from(session.players.values()).map((p, idx) => {
-          return `${idx + 1}. Oyuncu: ${p.username} | Karakteri: ${p.charName} (Sınıfı: ${p.class}, Canı: ${p.hp}/${p.maxHp})`;
+          return `${idx + 1}. Oyuncu: ${p.username} | Karakteri: ${p.charName} (Irkı: ${p.race || 'İnsan'}, Sınıfı: ${p.class}, Canı: ${p.hp}/${p.maxHp})`;
         }).join('\n');
 
         const economyDetails = session.economyMode === 'shared'
@@ -1225,7 +1317,7 @@ module.exports = {
         );
 
         embed.addFields({
-          name: `👤 ${p.charName} (${p.class}) - Seviye ${p.level || 1} [Sahibi: ${p.username}]`,
+          name: `👤 ${p.charName} (${p.race || 'İnsan'} ${p.class}) - Seviye ${p.level || 1} [Sahibi: ${p.username}]`,
           value: fields.join('\n')
         });
       });
@@ -1409,7 +1501,9 @@ module.exports = {
             'Sen deneyimli bir D&D Zindan Arkadaşı ve Rehberisin. Oyun henüz başlamadı, oyuncular lobide hazırlanıyor.',
             'Oyuncuların sınıflar, kurallar, başlangıç eşyaları, yetenekler veya büyüler hakkındaki sorularını yanıtla.',
             'Yanıtların kısa, öz, anlaşılır ve tamamen Türkçe olmalıdır.',
-            'D&D 5e kurallarını ve sistemimizdeki 11 sınıfı (Savaşçı, Büyücü, Hırsız, Rahip, Korucu, Paladin, Ozan, Barbar, Keşiş, Warlock, Druid) temel al.',
+            'D&D 5e kurallarını ve sistemimizdeki 13 sınıfı (Savaşçı, Büyücü, Hırsız, Rahip, Korucu, Paladin, Ozan, Barbar, Keşiş, Warlock, Druid, Sihirbaz, Mucit) temel al.',
+            'Tüm kurallar, alt sınıflar, ırklar, büyüler ve eşyalar hakkında https://dnd5e.wikidot.com kaynağını birincil referans olarak kullan.',
+            'Sistemimizde 9 oynanabilir ırk vardır: Elf, Cüce, İnsan, Buçukluk, Ejderha Soylu, Yarı-Elf, Yarı-Ork, Tiefling, Gnom.',
             'Sistemimizde para birimi sikkedir ve Bronz, Gümüş, Altın olarak 3\'e ayrılır (1 Altın = 10 Gümüş, 1 Gümüş = 10 Bronz). Alışverişlerde ve para üstü ödemelerinde bu oranları temel al.',
             '',
             'SİSTEMİMİZDEKİ SINIFLAR, EŞYALAR VE YETENEKLER:',
@@ -1423,7 +1517,9 @@ module.exports = {
             '8. Barbar: 28 HP | Çanta: Çift Elli Savaş Baltası, Fırlatma Baltası, Kürk Giysiler, Matara, 4 Gümüş Sikke | Yetenekler: Öfke (alınan hasarı azaltır, vurulan hasarı artırır), Pervasız Saldırı (avantajlı ama riskli saldırı).',
             '9. Keşiş: 18 HP | Çanta: Ahşap Asa, Fırlatma Bıçakları, Basit Keşiş Cübbesi, Bitki Çayı, 4 Gümüş Sikke | Yetenekler: Ki Darbesi (silahsız ekstra hızlı vuruşlar), Sabır Savunması (gelen saldırıları savuşturma).',
             '10. Warlock: 16 HP | Çanta: Karanlık Asa, Kadim Kitap, Gölgeli Cübbe, 1x Ruh Taşı, 7 Gümüş Sikke | Yetenekler/Büyüler: Mistik Patlama (güçlü büyü atışı), Cehennem Azabı (tepki olarak alev hasarı), Karanlık Görüş (karanlıkta görme).',
-            '11. Druid: 18 HP | Çanta: Sarmaşık Asa, Şifalı Bitki Çantası, Deri Cübbe, Doğa Sembolü, 5 Gümüş Sikke | Yetenekler/Büyüler: Doğal Form (Kurt formuna dönüşür), Diken Büyümesi (alanı dikenlerle kaplar), İyileştirici Esinti (can yeniler).'
+            '11. Druid: 18 HP | Çanta: Sarmaşık Asa, Şifalı Bitki Çantası, Deri Cübbe, Doğa Sembolü, 5 Gümüş Sikke | Yetenekler/Büyüler: Doğal Form (Kurt formuna dönüşür), Diken Büyümesi (alanı dikenlerle kaplar), İyileştirici Esinti (can yeniler).',
+            '12. Sihirbaz (Sorcerer): 14 HP | Çanta: Sihirli Küre, Sihir Asası, Basit Cübbe, 1x Sağlık İksiri, 7.5 Gümüş Sikke | Yetenekler: Alev Atışı (uzaktan alev saldırısı), Kaos Küresi (rastgele enerji türünde hasar). Alt sınıflar: Vahşi Büyü, Ejderha Soyu, Fırtına Büyücülüğü.',
+            '13. Mucit (Artificer): 16 HP | Çanta: Alet Çantası, Hafif Çapraz Yay, Deri Zırh, Tamirci Takımı, 8 Gümüş Sikke | Yetenekler: Sihirli Çekiç (eşyalara geçici sihir aşılar), Ateş Kıvılcımı (ateş saldırısı). Alt sınıflar: Alchemist, Artillerist, Battle Smith.'
           ].join('\n');
 
           let responseText = '';

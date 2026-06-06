@@ -47,7 +47,9 @@ module.exports = {
               'barbar', 'barbarian',
               'kesis', 'keşiş', 'monk',
               'warlock', 'karabuyucu', 'kara büyücü',
-              'druid'
+              'druid',
+              'sihirbaz', 'sorcerer', 'kan büyücüsü', 'kanbuyucusu',
+              'mucit', 'sanatkar', 'artificer'
             ];
             if (classes.includes(classInput)) {
               const charName = words.slice(0, words.length - 1).join(' ');
