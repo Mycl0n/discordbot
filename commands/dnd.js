@@ -848,7 +848,9 @@ module.exports = {
           '',
           '🛡️ DUNGEON MASTER KURALLARI VE YÖNERGELERİ:',
           '1. ANLATIM KURALI: Canlı, sürükleyici ama kısa tasvirler yap. Her yanıtın en fazla 800 karakter olmalıdır.',
-          '2. OYUNCU ÖZGÜRLÜĞÜ: Oyuncuların ne yapacağına, ne düşüneceğine veya nasıl hareket edeceğine asla sen karar verme. Karakterleri sen yönetme. Sadece ortamı ve sonuçları anlat.',
+          '2. OYUNCU ÖZGÜRLÜĞÜ VE YASAKLI DAVRANIŞLAR (KRİTİK):',
+          '   - Oyuncuların ne yapacağına, ne düşüneceğine veya ne söyleyeceğine ASLA sen karar verme. Karakterleri sen yönetme.',
+          '   - Oyuncuların ağzından kesinlikle konuşma, replik yazma ("Teşekkürler. İyi oynadın." gibi lafları veya diyalogları oyuncular adına üretme). Sadece NPC\'lerin tepkilerini ve çevre olaylarını anlat.',
           '3. ZAR TALEP ETME KURALLARI (KRİTİK):',
           '   - Bir durum veya oda/ortam tasvir ederken, ya da yeni bir canavar/tuzak tanıtırken KESİNLİKLE zar testi isteme. Sadece "Ne yapıyorsun?" veya "Ne yapıyorsunuz?" diye sor.',
           '   - Bir zar testi yapıldıktan ve sonucunu açıkladıktan sonra, aynı mesajda KESİNLİKLE yeni bir zar testi isteme. Sonucu anlat, ortamın son durumunu belirt ve "Ne yapıyorsun?" diyerek sırayı oyuncuya devret.',
@@ -868,9 +870,11 @@ module.exports = {
           '   - Oyuncu ödeme yaptığında (örn: 1 gümüş verdiğinde), satıcı/NPC ona para üstünü bronz sikkelerle ödeyebilir. Hikaye anlatımında bunu doğal bir şekilde yansıt.',
           '   - Para değişimlerini mesajın sonuna şu formatta etiketler ekleyerek belirt: `[Sikke: +5 Altın]`, `[Sikke: -2 Gümüş]`, `[Sikke: +10 Bronz]`. Eğer birden fazla para birimi değişiyorsa ayrı ayrı ekle (Örn: `[Sikke: -1 Gümüş] [Sikke: -5 Bronz]`).',
           '7. ENVANTER VE EŞYA SİSTEMİ (KRİTİK):',
-          '   - Oyuncular yeni bir eşya elde ettiğinde (örn: domuz derisi yüzme, ganimet bulma) veya bir eşya kaybettiklerinde/tükettiklerinde bunu envanter güncelleme etiketleriyle belirtmelisin.',
-          '   - Format: `[Envanter: +Eşya Adı]` veya `[Envanter: -Eşya Adı]`.',
-          '   - Eğer birden fazla veya miktarlı bir eşya ekleniyorsa ya da çıkarılıyorsa, miktarı belirterek yaz. Örnek: `[Envanter: +3 Domuz Eti]`, `[Envanter: +Domuz Derisi]`, `[Envanter: -1 Ok]`, `[Envanter: -1 Meşale]`. Bu etiketleri yanıtının sonuna ekle.',
+          '   - Oyuncular yeni bir eşya elde ettiğinde veya kaybettiğinde bunu envanter etiketleriyle yanıtının en sonuna ekle.',
+          '   - Eğer eşya belirli bir oyuncuya gidiyorsa ya da ondan çıkıyorsa oyuncunun KARAKTER ADINI belirterek şu formatta yazmalısın: `[Envanter (KarakterAdı): +Eşya Adı]` veya `[Envanter (KarakterAdı): -Eşya Adı]`.',
+          '     Örnekler: `[Envanter (Arda): +Karaçalı Hançeri]`, `[Envanter (pelin): +Zümrüt ve Elmas Kaplı Hançer]`, `[Envanter (Arda): -Zümrüt ve Elmas Kaplı Hançer]`.',
+          '   - Eğer karakter belirtmezsen etiket `[Envanter: +Eşya]` şeklinde kalırsa eşya eylemi başlatan oyuncunun envanterine işlenir.',
+          '   - Miktarlı eşyalar için: `[Envanter (Arda): +3 Domuz Eti]`, `[Envanter (pelin): -1 İksir]`.',
           '8. OTOMATİK ENVANTER GÜNCELLEMELERİ: Oyuncuların yay/ok kullanma, meşale yakma veya iksir içme gibi eylemleri sistem tarafından otomatik olarak envanterden düşülür. Senin bu standart tüketimler için ayrıca `[Envanter: -1 Ok]` yazmana gerek yoktur.',
           '9. DND5E WIKIDOT ENTEGRASYONU (KRİTİK): Tüm canavarlar, büyüler, sınıflar, alt sınıflar (subclasses), ırklar, büyülü eşyalar, tuzaklar ve dövüş/keşif kuralları tamamen D&D 5e standartlarına (https://dnd5e.wikidot.com kaynağına) uygun şekilde yönetilmelidir. Oyuncular bu kaynaktaki herhangi bir özelliği, alt sınıf yeteneğini veya büyüyü kullandıklarında DM bu kurallara sadık kalmalıdır. Karşılaşılan canavarlar, NPC\'ler ve hazine eşyaları D&D 5e Monster Manual, Dungeon Master\'s Guide ve Player\'s Handbook kaynaklarına uygun olmalıdır.',
           '10. IRK SİSTEMİ: Her oyuncunun bir ırkı vardır (Elf, Cüce, İnsan, Buçukluk, Ejderha Soylu, Yarı-Elf, Yarı-Ork, Tiefling, Gnom). Irk bilgisi oyuncu detaylarında belirtilmiştir. NPC\'lerin ve çevredeki karakterlerin oyuncuların ırklarına uygun tepkiler vermesini sağla (örn: bir Elf ormanlık bölgelerde doğal avantaja sahip olabilir, bir Tiefling bazı kasabalarda önyargıyla karşılanabilir). Irk özelliklerini D&D 5e kurallarına göre yönet.'
@@ -1109,6 +1113,10 @@ module.exports = {
           player.cooldowns[usedAbility] = 'long_rest';
         }
 
+        // Increment usage counter
+        if (!player.abilityUses) player.abilityUses = {};
+        player.abilityUses[usedAbility] = (player.abilityUses[usedAbility] || 0) + 1;
+
         // Append ability use details to the prompt
         actionText += ` [Yetenek Kullanımı: ${abilityDetails.name} (Tür: ${abilityDetails.type}, Etki: ${abilityDetails.desc})]`;
       }
@@ -1329,17 +1337,18 @@ module.exports = {
         const activeAbilities = getPlayerAbilities(p.class, p.level || 1);
         const abilityLines = activeAbilities.map(a => {
           const cd = p.cooldowns?.[a.name];
+          const uses = p.abilityUses?.[a.name] || 0;
           let typeText = 'Süresiz';
           if (a.type === 'short_rest') typeText = 'Kısa Rest';
           else if (a.type === 'long_rest') typeText = 'Uzun Rest';
           else if (a.type === 'turn') typeText = `${a.cooldown} Tur Cooldown`;
-
+          
           let statusText = '🟢 Kullanılabilir';
           if (cd === 'short_rest') statusText = '🔴 Beklemede (Reşarj: Kısa Rest)';
           else if (cd === 'long_rest') statusText = '🔴 Beklemede (Reşarj: Uzun Rest)';
           else if (typeof cd === 'number' && cd > 0) statusText = `🔴 Beklemede (${cd} tur kaldı)`;
 
-          return `🔹 **${a.name}**\n   *Açıklama:* ${a.desc}\n   *Kullanım Türü:* \`${typeText}\` | *Durum:* ${statusText}`;
+          return `🔹 **${a.name}** *(Kullanım Sayısı: ${uses})*\n   *Açıklama:* ${a.desc}\n   *Kullanım Türü:* \`${typeText}\` | *Durum:* ${statusText}`;
         }).join('\n\n');
 
         embed.addFields({
@@ -1376,11 +1385,12 @@ module.exports = {
         const activeAbilities = getPlayerAbilities(p.class, p.level || 1);
         const abilityList = activeAbilities.map(a => {
           const cd = p.cooldowns?.[a.name];
+          const uses = p.abilityUses?.[a.name] || 0;
           let statusText = '';
           if (cd === 'short_rest') statusText = ' ⏳ (Reşarj: Kısa Rest)';
           else if (cd === 'long_rest') statusText = ' ⏳ (Reşarj: Uzun Rest)';
           else if (typeof cd === 'number' && cd > 0) statusText = ` ⏳ (Bekleme: ${cd} tur)`;
-          return `🔹 **${a.name}** - *${a.desc}*${statusText}`;
+          return `🔹 **${a.name}** *(Kullanım: ${uses})* - *${a.desc}*${statusText}`;
         }).join('\n');
 
         const fields = [
@@ -1430,6 +1440,7 @@ module.exports = {
             hpRegained = p.maxHp - p.hp;
             p.hp = p.maxHp;
             p.cooldowns = {};
+            p.abilityUses = {}; // Fully reset uses on Long Rest
           } else {
             const conMod = p.modifiers['Dayanıklılık'] || 0;
             const d8 = Math.floor(Math.random() * 8) + 1;
@@ -1438,11 +1449,13 @@ module.exports = {
 
             // Clear short rest abilities, and reduce turn-based cooldowns by 5
             const classSpells = getPlayerAbilities(p.class, p.level || 1);
+            if (!p.abilityUses) p.abilityUses = {};
             for (const key of Object.keys(p.cooldowns)) {
               const spellData = classSpells.find(s => s.name.toLowerCase() === key.toLowerCase());
               if (spellData) {
                 if (spellData.type === 'short_rest') {
                   delete p.cooldowns[key];
+                  delete p.abilityUses[spellData.name]; // Reset short rest ability uses
                 } else if (spellData.type === 'turn') {
                   p.cooldowns[key] = Math.max(0, p.cooldowns[key] - 5);
                   if (p.cooldowns[key] === 0) {
@@ -1753,7 +1766,7 @@ module.exports = {
       if (session.economyMode === 'shared') {
         session.sharedGold = Math.max(0, (session.sharedGold || 0) + goldChanges);
       } else {
-        const player = session.players.get(triggeringPlayerId);
+        const player = session.players.get(triggeringPlayerId.toLowerCase());
         if (player) {
           player.gold = Math.max(0, (player.gold || 0) + goldChanges);
         }
@@ -1783,31 +1796,61 @@ module.exports = {
         }
       }
       if (targetPlayerId) {
-        const player = session.players.get(targetPlayerId);
+        const player = session.players.get(targetPlayerId.toLowerCase());
         if (player) {
           player.hp = Math.max(0, Math.min(player.maxHp, (player.hp || player.maxHp) + hpChanges));
         }
       }
     }
 
-    // 3. Parse Inventory additions/removals: [Envanter: +Yakut]
-    const invRegex = /\[Envanter:\s*([+-])([^\]]+)\]/gi;
+    // 3. Parse Inventory additions/removals: [Envanter: +Yakut] or [Envanter (Arda): +Yakut]
+    const invRegex = /\[Envanter\s*(?:\(([^)]+)\))?:\s*([+-])([^\]]+)\]/gi;
     let invMatch;
-    let addedItems = [];
-    let removedItems = [];
+    
+    // Store array of updates: { targetChar: string|null, operation: '+'|'-', rawItemName: string }
+    const inventoryUpdates = [];
     while ((invMatch = invRegex.exec(responseText)) !== null) {
-      const operation = invMatch[1];
-      const itemName = invMatch[2].trim();
-      if (operation === '+') {
-        addedItems.push(itemName);
-      } else {
-        removedItems.push(itemName);
-      }
+      const targetChar = invMatch[1] ? invMatch[1].trim() : null;
+      const operation = invMatch[2];
+      const rawItemName = invMatch[3].trim();
+      inventoryUpdates.push({ targetChar, operation, rawItemName });
     }
     responseText = responseText.replace(invRegex, '');
 
-    if ((addedItems.length > 0 || removedItems.length > 0)) {
-      let targetPlayerId = triggeringPlayerId;
+    const parseTagItem = (itemStr) => {
+      const match = itemStr.match(/^(\d+)\s*(?:x|adet)?\s*(.+)$/i);
+      if (match) {
+        return {
+          quantity: parseInt(match[1]),
+          name: match[2].trim()
+        };
+      }
+      return {
+        quantity: 1,
+        name: itemStr.trim()
+      };
+    };
+
+    let addedItems = [];
+    let removedItems = [];
+
+    // Process each update targeting the correct player envanter
+    for (const update of inventoryUpdates) {
+      let targetPlayerId = null;
+      if (update.targetChar) {
+        // Try to match player by charName
+        for (const [id, p] of session.players) {
+          if (p.charName.toLowerCase() === update.targetChar.toLowerCase()) {
+            targetPlayerId = id;
+            break;
+          }
+        }
+      }
+      
+      // Fallback if no specific target or target not found
+      if (!targetPlayerId) {
+        targetPlayerId = triggeringPlayerId;
+      }
       if (!targetPlayerId) {
         for (const [id, p] of session.players) {
           if (responseText.toLowerCase().includes(p.charName.toLowerCase())) {
@@ -1819,32 +1862,20 @@ module.exports = {
           targetPlayerId = Array.from(session.players.keys())[0];
         }
       }
+
       if (targetPlayerId) {
         const player = session.players.get(targetPlayerId);
         if (player) {
           if (!player.inventory) player.inventory = [];
+          const parsed = parseTagItem(update.rawItemName);
+          const changeSign = update.operation === '+' ? 1 : -1;
+          module.exports.updateInventory(player.inventory, parsed.name, changeSign * parsed.quantity);
           
-          const parseTagItem = (itemStr) => {
-            const match = itemStr.match(/^(\d+)\s*(?:x|adet)?\s*(.+)$/i);
-            if (match) {
-              return {
-                quantity: parseInt(match[1]),
-                name: match[2].trim()
-              };
-            }
-            return {
-              quantity: 1,
-              name: itemStr.trim()
-            };
-          };
-
-          for (const item of addedItems) {
-            const parsed = parseTagItem(item);
-            module.exports.updateInventory(player.inventory, parsed.name, parsed.quantity);
-          }
-          for (const item of removedItems) {
-            const parsed = parseTagItem(item);
-            module.exports.updateInventory(player.inventory, parsed.name, -parsed.quantity);
+          const formattedString = `${player.charName}: ${update.operation}${parsed.quantity > 1 ? parsed.quantity + 'x ' : ''}${parsed.name}`;
+          if (update.operation === '+') {
+            addedItems.push(formattedString);
+          } else {
+            removedItems.push(formattedString);
           }
         }
       }
