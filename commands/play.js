@@ -231,7 +231,11 @@ async function playSong(guild, song, client) {
     
     // Spawn yt-dlp to stream audio to stdout
     const ytdlp = spawn(binaryPath, [
-      '-f', 'bestaudio',
+      '-f', '251/bestaudio',
+      '--no-playlist',
+      '--youtube-skip-dash-manifest',
+      '--no-check-certificates',
+      '--no-warnings',
       '--js-runtimes', 'node',
       '-o', '-',
       song.url
