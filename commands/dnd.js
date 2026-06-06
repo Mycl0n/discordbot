@@ -20,6 +20,71 @@ module.exports = {
   name: 'dnd',
   formatCoins,
   description: 'Yapay zeka zindan ejderi (D&D) Dungeon Master oyunu.',
+  async callOpenRouter(modelName, systemInstruction, history, prompt) {
+    const messages = [
+      { role: 'system', content: systemInstruction }
+    ];
+    if (history && history.length > 0) {
+      messages.push(...history);
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
+    if (!openRouterKey) {
+      throw new Error('OPENROUTER_API_KEY is not defined in environment variables.');
+    }
+
+    const modelsToTry = [
+      modelName,
+      'google/gemini-2.0-flash-lite:free',
+      'meta-llama/llama-3-8b-instruct:free'
+    ].filter(Boolean);
+
+    let lastError = null;
+
+    for (const model of modelsToTry) {
+      try {
+        console.log(`[DEBUG] Querying OpenRouter model: ${model}`);
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openRouterKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://github.com/Mycl0n/discordbot',
+            'X-Title': 'Discord D&D Bot'
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`HTTP error ${response.status}: ${errText}`);
+        }
+
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.error.message || JSON.stringify(data.error));
+        }
+
+        if (!data.choices || data.choices.length === 0 || !data.choices[0].message?.content) {
+          throw new Error('OpenRouter response has no content/choices.');
+        }
+
+        return {
+          responseText: data.choices[0].message.content,
+          modelUsed: model
+        };
+      } catch (err) {
+        console.error(`[DEBUG] OpenRouter attempt with model ${model} failed:`, err.message);
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error('All OpenRouter models failed.');
+  },
   async execute(message, args, client) {
     if (!message.guild) {
       return message.reply('❌ Bu komut sadece sunucularda kullanılabilir.');
@@ -393,15 +458,13 @@ module.exports = {
         themeText = args.slice(1).join(' ');
       }
 
-      if (!process.env.GEMINI_API_KEY) {
-        return message.reply('❌ Yapay zeka servis anahtarı (**GEMINI_API_KEY**) bulunamadı! Lütfen geliştiriciye bildirin.');
+      if (!process.env.GEMINI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+        return message.reply('❌ Yapay zeka servis anahtarı (**GEMINI_API_KEY** veya **OPENROUTER_API_KEY**) bulunamadı! Lütfen geliştiriciye bildirin.');
       }
 
       await message.channel.sendTyping();
 
       try {
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        
         const systemInstruction = [
           'Sen deneyimli bir Dungeons & Dragons 5e Dungeon Master (DM - Oyun Yöneticisi) rolündesin. Türkçe konuşuyorsun.',
           'Oyunculardan oluşan bir gruba fantastik bir macera yaşatıyorsun.',
@@ -452,41 +515,59 @@ module.exports = {
           'NOT: Oyuncuların başlangıç sikkeleri Gümüş Sikke cinsinden cüzdanlarına eklenmiştir. Sistem para birimini 1 Altın = 10 Gümüş = 100 Bronz olarak otomatik olarak takip etmektedir. Alışverişlerde bu para birimlerini ve oranları kullan.'
         ].join('\n');
 
-        const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest', 'gemini-1.5-pro', 'gemini-pro-latest'];
-        let chat = null;
         let responseText = '';
         let modelUsed = '';
-        let lastError = null;
 
-        for (const modelName of modelsToTry) {
-          try {
-            console.log(`[DEBUG] Attempting D&D start with model: ${modelName}`);
-            const model = genAI.getGenerativeModel({
-              model: modelName,
-              systemInstruction: systemInstruction
-            });
-            chat = model.startChat({ history: [] });
-            
-            const result = await chat.sendMessage(initialPrompt);
-            responseText = result.response.text();
-            modelUsed = modelName;
-            lastError = null;
-            break; // Success! Break the loop
-          } catch (err) {
-            console.error(`[DEBUG] Model ${modelName} failed:`, err.message);
-            lastError = err;
-            chat = null;
+        if (process.env.OPENROUTER_API_KEY) {
+          session.chatHistory = [];
+          session.systemInstruction = systemInstruction;
+          const configModel = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+
+          const result = await module.exports.callOpenRouter(configModel, systemInstruction, session.chatHistory, initialPrompt);
+          responseText = result.responseText;
+          modelUsed = result.modelUsed;
+
+          session.chatHistory.push({ role: 'user', content: initialPrompt });
+          session.chatHistory.push({ role: 'assistant', content: responseText });
+          
+          session.modelUsed = modelUsed;
+          session.state = 'playing';
+        } else {
+          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+          const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest', 'gemini-1.5-pro', 'gemini-pro-latest'];
+          let chat = null;
+          let lastError = null;
+
+          for (const modelName of modelsToTry) {
+            try {
+              console.log(`[DEBUG] Attempting D&D start with model: ${modelName}`);
+              const model = genAI.getGenerativeModel({
+                model: modelName,
+                systemInstruction: systemInstruction
+              });
+              chat = model.startChat({ history: [] });
+              
+              const result = await chat.sendMessage(initialPrompt);
+              responseText = result.response.text();
+              modelUsed = modelName;
+              lastError = null;
+              break; // Success! Break the loop
+            } catch (err) {
+              console.error(`[DEBUG] Model ${modelName} failed:`, err.message);
+              lastError = err;
+              chat = null;
+            }
           }
-        }
 
-        if (lastError || !chat) {
-          throw new Error(lastError ? lastError.message : 'Kullanılabilir hiçbir yapay zeka modeli bulunamadı.');
-        }
+          if (lastError || !chat) {
+            throw new Error(lastError ? lastError.message : 'Kullanılabilir hiçbir yapay zeka modeli bulunamadı.');
+          }
 
-        session.chat = chat;
-        session.modelUsed = modelUsed;
-        session.systemInstruction = systemInstruction;
-        session.state = 'playing';
+          session.chat = chat;
+          session.modelUsed = modelUsed;
+          session.systemInstruction = systemInstruction;
+          session.state = 'playing';
+        }
 
         // Check if there is an initial roll check (unlikely but possible)
         const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)\]/i;
@@ -729,8 +810,34 @@ module.exports = {
 
     // 7. DND MODELLER
     if (subCommand === 'modeller' || subCommand === 'models') {
+      if (process.env.OPENROUTER_API_KEY) {
+        try {
+          await message.channel.sendTyping();
+          const currentModel = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+          const embed = new EmbedBuilder()
+            .setColor('#5865F2')
+            .setTitle('🤖 OpenRouter Model Yapılandırması')
+            .setDescription([
+              `Aktif Model: \`${currentModel}\``,
+              '',
+              '💡 **Önerilen Bazı Modeller:**',
+              '- `google/gemini-2.5-flash` (Hızlı, akıllı)',
+              '- `google/gemini-2.0-flash-lite:free` (Ücretsiz)',
+              '- `meta-llama/llama-3.3-70b-instruct:free` (Ücretsiz, çok iyi)',
+              '- `deepseek/deepseek-chat` (Çok ucuz, kaliteli)',
+              '',
+              'Modelinizi değiştirmek için VPS sunucunuzdaki `.env` dosyasında bulunan `OPENROUTER_MODEL` değerini güncelleyebilirsiniz.'
+            ].join('\n'))
+            .setTimestamp();
+          return message.reply({ embeds: [embed] });
+        } catch (error) {
+          console.error('OpenRouter Models Error:', error);
+          return message.reply(`❌ Model bilgisi alınırken hata oluştu.`);
+        }
+      }
+
       if (!process.env.GEMINI_API_KEY) {
-        return message.reply('❌ Sistemde **GEMINI_API_KEY** bulunamadı!');
+        return message.reply('❌ Sistemde **GEMINI_API_KEY** veya **OPENROUTER_API_KEY** bulunamadı!');
       }
       try {
         await message.channel.sendTyping();
@@ -769,14 +876,13 @@ module.exports = {
         const question = args.slice(1).join(' ');
         if (!question) return;
 
-        if (!process.env.GEMINI_API_KEY) {
+        if (!process.env.GEMINI_API_KEY && !process.env.OPENROUTER_API_KEY) {
           return message.reply('❌ Yapay zeka servis anahtarı bulunamadı.');
         }
 
         await message.channel.sendTyping();
 
         try {
-          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
           const lobbySystemInstruction = [
             'Sen deneyimli bir D&D Zindan Arkadaşı ve Rehberisin. Oyun henüz başlamadı, oyuncular lobide hazırlanıyor.',
             'Oyuncuların sınıflar, kurallar, başlangıç eşyaları, yetenekler veya büyüler hakkındaki sorularını yanıtla.',
@@ -798,28 +904,36 @@ module.exports = {
             '11. Druid: 18 HP | Ekipman: Sarmaşık Asa, Şifalı Bitki Çantası, Deri Cübbe, Doğa Sembolü, 5 Gümüş Sikke | Yetenekler/Büyüler: Doğal Form (Kurt formuna dönüşür), Diken Büyümesi (alanı dikenlerle kaplar), İyileştirici Esinti (can yeniler).'
           ].join('\n');
 
-          const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest'];
           let responseText = '';
-          let lastError = null;
 
-          for (const modelName of modelsToTry) {
-            try {
-              const model = genAI.getGenerativeModel({
-                model: modelName,
-                systemInstruction: lobbySystemInstruction
-              });
-              const result = await model.generateContent(question);
-              responseText = result.response.text();
-              lastError = null;
-              break;
-            } catch (err) {
-              console.error(`[Lobby Q] Model ${modelName} failed:`, err.message);
-              lastError = err;
+          if (process.env.OPENROUTER_API_KEY) {
+            const configModel = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+            const result = await module.exports.callOpenRouter(configModel, lobbySystemInstruction, [], question);
+            responseText = result.responseText;
+          } else {
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest'];
+            let lastError = null;
+
+            for (const modelName of modelsToTry) {
+              try {
+                const model = genAI.getGenerativeModel({
+                  model: modelName,
+                  systemInstruction: lobbySystemInstruction
+                });
+                const result = await model.generateContent(question);
+                responseText = result.response.text();
+                lastError = null;
+                break;
+              } catch (err) {
+                console.error(`[Lobby Q] Model ${modelName} failed:`, err.message);
+                lastError = err;
+              }
             }
-          }
 
-          if (lastError || !responseText) {
-            throw new Error(lastError ? lastError.message : 'Yapay zeka yanıt üretemedi.');
+            if (lastError || !responseText) {
+              throw new Error(lastError ? lastError.message : 'Yapay zeka yanıt üretemedi.');
+            }
           }
 
           const embed = new EmbedBuilder()
@@ -837,6 +951,28 @@ module.exports = {
       }
   },
   async sendMessageWithFallback(session, prompt) {
+    if (process.env.OPENROUTER_API_KEY) {
+      const modelName = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+      try {
+        const result = await module.exports.callOpenRouter(
+          modelName,
+          session.systemInstruction,
+          session.chatHistory || [],
+          prompt
+        );
+
+        if (!session.chatHistory) session.chatHistory = [];
+        session.chatHistory.push({ role: 'user', content: prompt });
+        session.chatHistory.push({ role: 'assistant', content: result.responseText });
+
+        session.modelUsed = result.modelUsed;
+        return { result: null, responseText: result.responseText };
+      } catch (error) {
+        console.error('[DEBUG] OpenRouter sendMessage failed:', error.message);
+        throw error;
+      }
+    }
+
     const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest', 'gemini-1.5-pro', 'gemini-pro-latest'];
     let result = null;
     let responseText = '';
