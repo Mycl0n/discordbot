@@ -10,7 +10,9 @@ module.exports = {
 
     // Check if it's a D&D roll interaction
     if (customId.startsWith('dnd_roll_')) {
-      const ability = customId.split('_')[2]; // e.g. 'Kuvvet'
+      const parts = customId.split('_');
+      const ability = parts[2]; // e.g. 'Kuvvet'
+      const buttonTargetId = parts[3]; // specific targeted player for this button, if any
       const session = client.dndGames?.get(interaction.guild.id);
 
       if (!session) {
@@ -21,7 +23,8 @@ module.exports = {
         return interaction.reply({ content: '❌ Şu anda aktif bir zar testi bulunmamaktadır!', ephemeral: true });
       }
 
-      const playerId = session.pendingRoll.playerId;
+      // If button has a specific target, use that, otherwise default to pendingRoll's playerId
+      const playerId = buttonTargetId || session.pendingRoll.playerId;
       const player = session.players.get(playerId);
       if (!player) {
         return interaction.reply({ content: '❌ Karakteriniz bulunamadı!', ephemeral: true });
@@ -145,14 +148,11 @@ module.exports = {
           levelUpMessage = `\n\n🌟 **TEBRİKLER! SEVİYE ATLADI!** 🌟\n**${player.charName}** artık **Seviye ${player.level}**! Maksimum Canı **${player.maxHp}** HP'ye yükseldi!${newSpellMessage}`;
         }
 
-        // Check if the AI wants another roll check
-        const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)(?:,\s*Zorluk:\s*(\d+))?\]/i;
-        const match = updates.responseText.match(rollRegex);
-
+        // Check if the AI wants another roll check (using newly parsed requestedRolls array)
         const replyEmbed = new EmbedBuilder()
           .setColor(session.state === 'combat' ? '#ED4245' : '#5865F2')
           .setTitle(session.state === 'combat' ? '⚔️ Savaş - Dungeon Master' : '🛡️ Dungeon Master')
-          .setDescription(updates.responseText.replace(rollRegex, '').trim() + levelUpMessage)
+          .setDescription(updates.responseText.trim() + levelUpMessage)
           .setTimestamp();
 
         // Print changes footer if any
@@ -167,22 +167,61 @@ module.exports = {
         if (footerParts.length > 0) replyEmbed.setFooter({ text: footerParts.join(' | ') });
 
         const components = [];
-        if (match) {
-          const nextAbility = match[1];
-          const nextDifficulty = match[2] ? parseInt(match[2]) : 10;
+        if (updates.requestedRolls && updates.requestedRolls.length > 0) {
+          const row = new ActionRowBuilder();
+          
+          // Use the first roll request for session.pendingRoll compatibility
+          const firstRoll = updates.requestedRolls[0];
+          let rollerCharName = playerId; // default to previous roller
+          if (firstRoll.targetChar) {
+            for (const [id, p] of session.players) {
+              if (p.charName.toLowerCase() === firstRoll.targetChar.toLowerCase()) {
+                rollerCharName = p.charName.toLowerCase();
+                break;
+              }
+            }
+          } else {
+            for (const [id, p] of session.players) {
+              if (updates.responseText.toLowerCase().includes(p.charName.toLowerCase())) {
+                rollerCharName = p.charName.toLowerCase();
+                break;
+              }
+            }
+          }
 
           session.pendingRoll = {
-            ability: nextAbility,
-            difficulty: nextDifficulty,
-            playerId: playerId
+            ability: firstRoll.ability,
+            difficulty: firstRoll.difficulty,
+            playerId: rollerCharName
           };
 
-          const button = new ButtonBuilder()
-            .setCustomId(`dnd_roll_${nextAbility}`)
-            .setLabel(`🎲 ${nextAbility} Zarı At (1d20) - DC ${nextDifficulty}`)
-            .setStyle(session.state === 'combat' ? ButtonStyle.Danger : ButtonStyle.Primary);
+          for (const req of updates.requestedRolls) {
+            let targetId = playerId;
+            if (req.targetChar) {
+              for (const [id, p] of session.players) {
+                if (p.charName.toLowerCase() === req.targetChar.toLowerCase()) {
+                  targetId = p.charName.toLowerCase();
+                  break;
+                }
+              }
+            } else {
+              for (const [id, p] of session.players) {
+                if (updates.responseText.toLowerCase().includes(p.charName.toLowerCase())) {
+                  targetId = p.charName.toLowerCase();
+                  break;
+                }
+              }
+            }
 
-          const row = new ActionRowBuilder().addComponents(button);
+            const targetPlayerObj = session.players.get(targetId);
+            const labelName = targetPlayerObj ? targetPlayerObj.charName : req.targetChar || 'Herkes';
+
+            const button = new ButtonBuilder()
+              .setCustomId(`dnd_roll_${req.ability}_${targetId}`)
+              .setLabel(`🎲 ${labelName} - ${req.ability} Zarı At (DC ${req.difficulty})`)
+              .setStyle(session.state === 'combat' ? ButtonStyle.Danger : ButtonStyle.Primary);
+            row.addComponents(button);
+          }
           components.push(row);
         }
 

@@ -857,7 +857,9 @@ module.exports = {
           '   - Yalnızca oyuncu "a!dnd aksiyon" komutuyla veya doğrudan mesajla riskli, tehlikeli veya başarısızlık ihtimali olan bir eylem gerçekleştirdiğinde o eylemi çözümlemek için zar iste.',
           '   - Eğer oyuncunun eylemi basit, güvenli veya sıradan bir eylemse (Örn: etrafa bakmak, kapıyı kilitli/tuzaklı değilse açmak, güvenli bir şekilde yürümek) zar isteme, sonucu doğrudan anlat ve bir sonraki hamleyi sor.',
           '4. ZAR İSTEME FORMATI: Zar istemek için mesajın EN SONUNA tam olarak şu formatta ekleme yap: `[Zar: Yetenek]`. Yetenek şunlardan biri olmalıdır: Kuvvet, Dayanıklılık, El Becerisi, Zeka, Bilgelik, Karizma. Yeteneği Türkçe yaz.',
-          '   Eğer zar istemiyorsan, mesajında kesinlikle `[Zar: Yetenek]` ifadesi yer almamalıdır.',
+          '   - Eğer birden fazla oyuncunun zar atmasını istiyorsan veya belirli bir oyuncudan zar talep ediyorsan, karakter isimlerini belirterek şu formatta yazmalısın: `[Zar (KarakterAdı): Yetenek]`.',
+          '     Örnekler: `[Zar (Arda): El Becerisi] [Zar (pelin): El Becerisi]`. Her oyuncu için ayrı bir etiket ekle ki sistem hepsine ayrı buton üretebilsin.',
+          '   - Eğer zar istemiyorsan, mesajında kesinlikle bu ifadeler yer almamalıdır.',
           '5. HİKAYE AKIŞI VE SAKİN BAŞLANGIÇ TEMPOSU (KRİTİK):',
           '   - Maceraya başlarken KESİNLİKLE doğrudan bir kriz, savaş, yıkım, canavar saldırısı veya tekinsiz olağanüstü bir durumla başlama.',
           '   - Oyuncuları kendi sıradan, huzurlu günlük hayatları içinde bir sahneyle başlat (Örn: evine gidip ailesiyle sakin bir akşam yemeği yemesi, köy meydanında sıradan işleriyle ilgilenmesi vb.).',
@@ -1259,13 +1261,10 @@ module.exports = {
           updates.removedItems = [...new Set([...allAutoRemoved, ...updates.removedItems])];
         }
 
-        const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)(?:,\s*Zorluk:\s*(\d+))?\]/i;
-        const match = updates.responseText.match(rollRegex);
-
         const embed = new EmbedBuilder()
           .setColor(session.state === 'combat' ? '#ED4245' : '#5865F2')
           .setTitle(session.state === 'combat' ? '⚔️ Savaş - Dungeon Master' : '🛡️ Dungeon Master')
-          .setDescription(updates.responseText.replace(rollRegex, '').trim())
+          .setDescription(updates.responseText.trim())
           .setTimestamp();
 
         // Print changes footer if any
@@ -1280,31 +1279,63 @@ module.exports = {
         if (footerParts.length > 0) embed.setFooter({ text: footerParts.join(' | ') });
 
         const components = [];
-        if (match) {
-          const ability = match[1];
-          const difficulty = match[2] ? parseInt(match[2]) : 10;
+        let hasRolls = updates.requestedRolls && updates.requestedRolls.length > 0;
+        if (hasRolls) {
+          const row = new ActionRowBuilder();
           
-          // Determine who should roll based on the description text, or fallback to the triggering player
+          // Use the first roll request for session.pendingRoll compatibility
+          const firstRoll = updates.requestedRolls[0];
           let rollerCharName = player.charName.toLowerCase();
-          for (const [id, p] of session.players) {
-            if (updates.responseText.toLowerCase().includes(p.charName.toLowerCase())) {
-              rollerCharName = p.charName.toLowerCase();
-              break;
+          if (firstRoll.targetChar) {
+            for (const [id, p] of session.players) {
+              if (p.charName.toLowerCase() === firstRoll.targetChar.toLowerCase()) {
+                rollerCharName = p.charName.toLowerCase();
+                break;
+              }
+            }
+          } else {
+            for (const [id, p] of session.players) {
+              if (updates.responseText.toLowerCase().includes(p.charName.toLowerCase())) {
+                rollerCharName = p.charName.toLowerCase();
+                break;
+              }
             }
           }
 
           session.pendingRoll = {
-            ability: ability,
-            difficulty: difficulty,
+            ability: firstRoll.ability,
+            difficulty: firstRoll.difficulty,
             playerId: rollerCharName
           };
 
-          const button = new ButtonBuilder()
-            .setCustomId(`dnd_roll_${ability}`)
-            .setLabel(`🎲 ${ability} Zarı At (1d20) - DC ${difficulty}`)
-            .setStyle(session.state === 'combat' ? ButtonStyle.Danger : ButtonStyle.Primary);
+          for (const req of updates.requestedRolls) {
+            let targetId = player.charName.toLowerCase();
+            if (req.targetChar) {
+              for (const [id, p] of session.players) {
+                if (p.charName.toLowerCase() === req.targetChar.toLowerCase()) {
+                  targetId = p.charName.toLowerCase();
+                  break;
+                }
+              }
+            } else {
+              for (const [id, p] of session.players) {
+                if (updates.responseText.toLowerCase().includes(p.charName.toLowerCase())) {
+                  targetId = p.charName.toLowerCase();
+                  break;
+                }
+              }
+            }
 
-          components.push(new ActionRowBuilder().addComponents(button));
+            const targetPlayerObj = session.players.get(targetId);
+            const labelName = targetPlayerObj ? targetPlayerObj.charName : req.targetChar || 'Herkes';
+
+            const button = new ButtonBuilder()
+              .setCustomId(`dnd_roll_${req.ability}_${targetId}`)
+              .setLabel(`🎲 ${labelName} - ${req.ability} Zarı At (DC ${req.difficulty})`)
+              .setStyle(session.state === 'combat' ? ButtonStyle.Danger : ButtonStyle.Primary);
+            row.addComponents(button);
+          }
+          components.push(row);
         }
 
         await message.reply({ embeds: [embed], components: components });
@@ -1814,6 +1845,18 @@ module.exports = {
       }
     }
 
+    // 2.5 Parse Rolls: [Zar: Yetenek] or [Zar (Karakter): Yetenek]
+    const rollRegex = /\[Zar\s*(?:\(([^)]+)\))?:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)(?:,\s*Zorluk:\s*(\d+))?\]/gi;
+    let rollMatch;
+    const requestedRolls = [];
+    while ((rollMatch = rollRegex.exec(responseText)) !== null) {
+      const targetChar = rollMatch[1] ? rollMatch[1].trim() : null;
+      const ability = rollMatch[2].trim();
+      const difficulty = rollMatch[3] ? parseInt(rollMatch[3]) : 10;
+      requestedRolls.push({ targetChar, ability, difficulty });
+    }
+    responseText = responseText.replace(rollRegex, '');
+
     // 3. Parse Inventory additions/removals: [Envanter: +Yakut] or [Envanter (Arda): +Yakut]
     const invRegex = /\[Envanter\s*(?:\(([^)]+)\))?:\s*([+-])([^\]]+)\]/gi;
     let invMatch;
@@ -1912,7 +1955,8 @@ module.exports = {
       addedItems,
       removedItems,
       combatTriggered,
-      enemyText
+      enemyText,
+      requestedRolls
     };
   },
   initializeCombat(session, enemyText) {
