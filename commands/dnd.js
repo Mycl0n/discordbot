@@ -434,18 +434,25 @@ module.exports = {
           return `${idx + 1}. Oyuncu: ${p.username} | Karakteri: ${p.charName} (Sınıfı: ${p.class}, Canı: ${p.hp}/${p.maxHp})`;
         }).join('\n');
 
+        const economyDetails = session.economyMode === 'shared'
+          ? `Ekonomi Modu: ORTAK CÜZDAN (Grup parası ortak bir havuzda birleşmiştir. Şu an ortak cüzdanda toplam ${formatCoins(session.sharedGold)} bulunmaktadır.)`
+          : `Ekonomi Modu: BİREYSEL CÜZDANLAR (Her karakterin kendi parası vardır.)`;
+
         const initialPrompt = [
           `Maceranın Teması/Evreni: ${themeText}`,
+          '',
+          `Para Durumu:`,
+          economyDetails,
           '',
           'Macera Başlıyor! Oyuncularımız ve karakterleri şunlar:',
           playerDetails,
           '',
           'Lütfen maceraya doğrudan büyük bir kriz veya tehlikeyle BAŞLAMA. Oyuncuyu, seçilen temaya uygun şekilde, kendi sıradan ve huzurlu günlük hayatı içinden sakin bir sahneyle başlat (Örn: evinde akşam yemeği yemesi, sakin bir kasaba gününde dolaşması). Ortamı ve bu sıradan anı tasvir edip ilk hamlelerini sor.',
           '',
-          'NOT: Oyuncuların başlangıç sikkeleri Altın Sikke cinsinden cüzdanlarına eklenmiştir. Sistem para birimini 1 Altın = 10 Gümüş = 100 Bronz olarak otomatik olarak takip etmektedir. Alışverişlerde bu para birimlerini ve oranları kullan.'
+          'NOT: Oyuncuların başlangıç sikkeleri Gümüş Sikke cinsinden cüzdanlarına eklenmiştir. Sistem para birimini 1 Altın = 10 Gümüş = 100 Bronz olarak otomatik olarak takip etmektedir. Alışverişlerde bu para birimlerini ve oranları kullan.'
         ].join('\n');
 
-        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
+        const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest', 'gemini-1.5-pro', 'gemini-pro-latest'];
         let chat = null;
         let responseText = '';
         let modelUsed = '';
@@ -791,7 +798,7 @@ module.exports = {
             '11. Druid: 18 HP | Ekipman: Sarmaşık Asa, Şifalı Bitki Çantası, Deri Cübbe, Doğa Sembolü, 5 Gümüş Sikke | Yetenekler/Büyüler: Doğal Form (Kurt formuna dönüşür), Diken Büyümesi (alanı dikenlerle kaplar), İyileştirici Esinti (can yeniler).'
           ].join('\n');
 
-          const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+          const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest'];
           let responseText = '';
           let lastError = null;
 
@@ -830,7 +837,7 @@ module.exports = {
       }
   },
   async sendMessageWithFallback(session, prompt) {
-    const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest', 'gemini-1.5-pro', 'gemini-pro-latest'];
     let result = null;
     let responseText = '';
     let lastError = null;
