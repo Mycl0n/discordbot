@@ -362,7 +362,12 @@ module.exports = {
           '   - Eğer oyuncunun eylemi basit, güvenli veya sıradan bir eylemse (Örn: etrafa bakmak, kapıyı kilitli/tuzaklı değilse açmak, güvenli bir şekilde yürümek) zar isteme, sonucu doğrudan anlat ve bir sonraki hamleyi sor.',
           '4. ZAR İSTEME FORMATI: Zar istemek için mesajın EN SONUNA tam olarak şu formatta ekleme yap: `[Zar: Yetenek]`. Yetenek şunlardan biri olmalıdır: Kuvvet, Dayanıklılık, El Becerisi, Zeka, Bilgelik, Karizma. Yeteneği Türkçe yaz.',
           '   Eğer zar istemiyorsan, mesajında kesinlikle `[Zar: Yetenek]` ifadesi yer almamalıdır.',
-          '5. HİKAYE AKIŞI: Zar sonucu 10 ve üzeri başarı, 15 ve üzeri büyük başarı, 20 kritik başarı, 1 kritik başarısızlık olarak değerlendirilir. Can puanlarını (HP) duruma göre azaltabilirsin.'
+          '5. HİKAYE AKIŞI VE SAKİN BAŞLANGIÇ TEMPOSU (KRİTİK):',
+          '   - Maceraya başlarken KESİNLİKLE doğrudan bir kriz, savaş, yıkım, canavar saldırısı veya tekinsiz olağanüstü bir durumla başlama.',
+          '   - Oyuncuları kendi sıradan, huzurlu günlük hayatları içinde bir sahneyle başlat (Örn: evine gidip ailesiyle sakin bir akşam yemeği yemesi, köy meydanında sıradan işleriyle ilgilenmesi vb.).',
+          '   - Oyuncunun karakterini tanıtmasına, çevreyle huzurlu şekilde etkileşime girmesine ve dünyayı tanımasına izin ver.',
+          '   - Hikaye biraz ilerledikten, oyuncu birkaç eylem yaptıktan sonra yavaş yavaş ve doğal bir şekilde gizemleri, olayları ve tehlikeleri baş gösterdir.',
+          '   - Zar sonucu 10 ve üzeri başarı, 15 ve üzeri büyük başarı, 20 kritik başarı, 1 kritik başarısızlık olarak değerlendirilir. Can puanlarını (HP) duruma göre azaltabilirsin.'
         ].join('\n');
 
         // Format player list for AI
@@ -376,7 +381,7 @@ module.exports = {
           'Macera Başlıyor! Oyuncularımız ve karakterleri şunlar:',
           playerDetails,
           '',
-          'Lütfen oyuncuları bu temaya uygun fantastik/bilimkurgu/tematik bir dünyada başlat. Ortamı detaylıca tasvir et ve ilk hamlelerini sor.'
+          'Lütfen maceraya doğrudan büyük bir kriz veya tehlikeyle BAŞLAMA. Oyuncuyu, seçilen temaya uygun şekilde, kendi sıradan ve huzurlu günlük hayatı içinden sakin bir sahneyle başlat (Örn: evinde akşam yemeği yemesi, sakin bir kasaba gününde dolaşması). Ortamı ve bu sıradan anı tasvir edip ilk hamlelerini sor.'
         ].join('\n');
 
         const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-pro-latest'];
