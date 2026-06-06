@@ -24,7 +24,7 @@ module.exports = {
         {
           name: '🎮 Eğlence & Oyunlar',
           value: [
-            `\`${prefix}dnd basla\` - Yapay zeka ile D&D (rol yapma) macerası başlatır!`,
+            `\`${prefix}dnd başlat\` - Yapay zeka ile D&D (rol yapma) macerası başlatır!`,
             `\`${prefix}xox\` - Bota karşı Tic-Tac-Toe (XOX) oynar (Butonlu!).`,
             `\`${prefix}tkm\` - Bota karşı Taş-Kağıt-Makas oynar (Butonlu!).`,
             `\`${prefix}sayitahmin\` - Sayı tahmin etme oyunu oynar.`,

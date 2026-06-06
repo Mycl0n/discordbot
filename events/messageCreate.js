@@ -4,11 +4,15 @@ const { prefix } = require('../config.json');
 module.exports = {
   name: Events.MessageCreate,
   async execute(client, message) {
-    // Ignore messages from other bots or if they don't start with prefix
-    if (message.author.bot || !message.content.startsWith(prefix)) return;
+    const content = message.content;
+    const lowerContent = content.toLowerCase();
+    const lowerPrefix = prefix.toLowerCase();
+
+    // Ignore messages from other bots or if they don't start with prefix (case-insensitive)
+    if (message.author.bot || !lowerContent.startsWith(lowerPrefix)) return;
 
     // Extract arguments and command name
-    const args = message.content.slice(prefix.length).trim().split(/ +/);
+    const args = content.slice(prefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
 
     // Check if the command exists (by name or alias)

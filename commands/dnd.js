@@ -19,10 +19,10 @@ module.exports = {
         .setDescription([
           'Yapay zeka zindan yöneticisi (Dungeon Master) ile D&D oynamak için kullanabileceğiniz komutlar aşağıdadır:',
           '',
-          `🔹 \`${prefix}dnd basla\` - Yeni bir macera lobisi oluşturur.`,
-          `🔹 \`${prefix}dnd katil <Karakter Adı> <Sınıf>\` - Karakterinizle lobiye katılır.`,
+          `🔹 \`${prefix}dnd başlat\` - Yeni bir macera lobisi oluşturur.`,
+          `🔹 \`${prefix}dnd katıl <Karakter Adı> <Sınıf>\` - Karakterinizle lobiye katılır.`,
           `  *(Sınıflar: Savasci, Buyucu, Hirsiz, Rahip)*`,
-          `🔹 \`${prefix}dnd oyna\` - Lobideki en az 2 oyuncu hazır olduğunda oyunu ve hikayeyi başlatır.`,
+          `🔹 \`${prefix}dnd oyna\` - Lobideki en az 1 oyuncu hazır olduğunda oyunu ve hikayeyi başlatır.`,
           `🔹 \`${prefix}dnd aksiyon <eylem>\` - Karakterinizin yapmak istediği hareketi yapay zekaya iletir.`,
           `🔹 \`${prefix}dnd durum\` - Oyuncuların Can (HP), envanter ve yetenek durumlarını listeler.`,
           `🔹 \`${prefix}dnd bitir\` - Oturumu sonlandırır ve lobi verilerini sıfırlar.`,
@@ -39,8 +39,8 @@ module.exports = {
     const guildId = message.guild.id;
     const session = client.dndGames.get(guildId);
 
-    // 1. DND BASLA
-    if (subCommand === 'basla' || subCommand === 'start') {
+    // 1. DND BAŞLAT
+    if (subCommand === 'başlat' || subCommand === 'baslat' || subCommand === 'basla' || subCommand === 'start') {
       if (session) {
         return message.reply('❌ Bu sunucuda zaten aktif bir D&D lobisi veya oyunu bulunuyor!');
       }
@@ -61,7 +61,7 @@ module.exports = {
         .setDescription([
           'Yeni bir yapay zeka yönetimli D&D macerası başlıyor!',
           `Katılmak için aşağıdaki komutu kullanın:`,
-          `\`${prefix}dnd katil <Karakter Adı> <Sınıf>\``,
+          `\`${prefix}dnd katıl <Karakter Adı> <Sınıf>\``,
           '',
           '**Seçilebilir Sınıflar & Yetenekleri:**',
           '⚔️ **Savasci** (Kuvvet +3, Dayanıklılık +2, Zeka -1)',
@@ -79,9 +79,9 @@ module.exports = {
     }
 
     // 2. DND KATIL
-    if (subCommand === 'katil' || subCommand === 'join') {
+    if (subCommand === 'katıl' || subCommand === 'katil' || subCommand === 'join') {
       if (!session) {
-        return message.reply(`❌ Aktif bir lobi bulunmamaktadır! Önce \`${prefix}dnd basla\` yazarak bir lobi kurun.`);
+        return message.reply(`❌ Aktif bir lobi bulunmamaktadır! Önce \`${prefix}dnd başlat\` yazarak bir lobi kurun.`);
       }
 
       if (session.state !== 'lobby') {
@@ -92,7 +92,7 @@ module.exports = {
       const charClassInput = args[2]?.toLowerCase();
 
       if (!charName || !charClassInput) {
-        return message.reply(`❌ Hatalı Kullanım!\nDoğru Kullanım: \`${prefix}dnd katil <Karakter Adı> <Savasci/Buyucu/Hirsiz/Rahip>\``);
+        return message.reply(`❌ Hatalı Kullanım!\nDoğru Kullanım: \`${prefix}dnd katıl <Karakter Adı> <Savasci/Buyucu/Hirsiz/Rahip>\``);
       }
 
       if (session.players.has(message.author.id)) {
