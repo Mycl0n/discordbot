@@ -431,8 +431,9 @@ module.exports = {
           'Yapay zeka zindan yöneticisi (Dungeon Master) ile D&D oynamak için kullanabileceğiniz komutlar aşağıdadır:',
           '',
           `🔹 \`${prefix}dnd başlat\` - Yeni bir macera lobisi oluşturur.`,
-          `🔹 \`${prefix}dnd katıl <Karakter Adı> <Sınıf>\` - Karakterinizle lobiye katılır.`,
-          `  *(Sınıflar: Savasci, Buyucu, Hirsiz, Rahip, Druid, Paladin, Ozan, Barbar, Korucu, Kesis, Warlock)*`,
+          `🔹 \`${prefix}dnd katıl <Karakter Adı> [Irk] <Sınıf>\` - Karakterinizle lobiye katılır.`,
+          `  *(Sınıflar: Savasci, Buyucu, Hirsiz, Rahip, Druid, Paladin, Ozan, Barbar, Korucu, Kesis, Warlock, Sihirbaz, Mucit)*`,
+          `  *(Irklar: Elf, Cüce, İnsan, Buçukluk, Ejderha Soylu, Yarı-Elf, Yarı-Ork, Tiefling, Gnom)*`,
           `🔹 \`${prefix}dnd oyna\` - Lobideki en az 1 oyuncu hazır olduğunda oyunu ve hikayeyi başlatır.`,
           `🔹 \`${prefix}dnd aksiyon <eylem>\` - Karakterinizin yapmak istediği hareketi yapay zekaya iletir.`,
           `🔹 \`${prefix}dnd durum\` - Oyuncuların Can (HP), çanta ve yetenek durumlarını listeler.`,
@@ -440,8 +441,11 @@ module.exports = {
           `🔹 \`${prefix}dnd dinlen <kisa/uzun>\` - Kısa veya uzun dinlenme yaparak can yeniler ve yetenekleri şarj eder.`,
           `🔹 \`${prefix}dnd bitir\` - Oturumu sonlandırır ve lobi verilerini sıfırlar.`,
           '',
+          '👥 **Çoklu Oyuncu Sistemi:**',
+          'Birden fazla oyuncu varken herkes sırayla aksiyonunu yazar. Tüm oyuncular aksiyonunu verdikten sonra DM hepsini birlikte değerlendirir ve hikayeyi devam ettirir.',
+          '',
           '🎲 **Yetenek Zarı Testleri:**',
-          'Yapay zeka bir eyleminiz karşılığında zar atmanızı istediğinde sohbette otomatik olarak **🎲 Zar At** butonu belirecektir. Butona basarak zarı atabilirsiniz.'
+          'Yapay zeka bir eyleminiz karşılığında zar atmanızı istediğinde sohbette otomatik olarak **🎲 Zar At** butonu belirecektir. İlgili oyuncu butona basarak zarı atabilir.'
         ].join('\n'))
         .setTimestamp()
         .setFooter({ text: 'Dungeons & Dragons AI' });
@@ -1007,6 +1011,19 @@ module.exports = {
         return message.reply(`❌ Lütfen karakterinizin yapacağı eylemi yazın!\nKullanım: \`${prefix}dnd aksiyon <ne yapmak istiyorsunuz?>\``);
       }
 
+      // Check if this player already submitted an action this round
+      if (session.pendingActions) {
+        const alreadyActed = Array.from(session.pendingActions.values()).find(a => a.player.userId === message.author.id);
+        if (alreadyActed) {
+          const warnMsg = await message.reply(`❌ **${alreadyActed.player.charName}** zaten bu tur aksiyonunu verdi! Diğer oyuncuların aksiyonunu bekleyin.`);
+          setTimeout(async () => {
+            try { await message.delete(); } catch(e) {}
+            try { await warnMsg.delete(); } catch(e) {}
+          }, 5000);
+          return;
+        }
+      }
+
       let player = null;
       let prefixMatched = false;
       const prefixMatch = actionText.match(/^([^:]+):\s*(.*)$/);
@@ -1138,20 +1155,83 @@ module.exports = {
         actionText += ` [Envanter Tüketimi: ${autoRemoved.join(', ')}]`;
       }
 
+      // --- Multi-player action collection system ---
+      if (!session.pendingActions) session.pendingActions = new Map();
+
+      // Store this player's action
+      session.pendingActions.set(player.charName.toLowerCase(), {
+        player: player,
+        actionText: actionText,
+        usedAbility: usedAbility,
+        autoRemoved: autoRemoved
+      });
+
+      const totalPlayers = session.players.size;
+      const actedPlayers = session.pendingActions.size;
+
+      // If not all players have acted yet, show waiting embed
+      if (actedPlayers < totalPlayers) {
+        const waitingFor = [];
+        session.players.forEach(p => {
+          if (!session.pendingActions.has(p.charName.toLowerCase())) {
+            waitingFor.push(`**${p.charName}**`);
+          }
+        });
+
+        const waitEmbed = new EmbedBuilder()
+          .setColor('#FEE75C')
+          .setTitle('⏳ Aksiyonlar Toplanıyor...')
+          .setDescription([
+            `✅ **${player.charName}** aksiyonunu verdi: *"${args.slice(1).join(' ')}"*`,
+            '',
+            `📋 **Durum:** ${actedPlayers}/${totalPlayers} oyuncu aksiyonunu verdi.`,
+            `⏳ **Beklenen:** ${waitingFor.join(', ')}`,
+            '',
+            `*Tüm oyuncular aksiyonunu verdiğinde hikaye devam edecek.*`
+          ].join('\n'))
+          .setTimestamp();
+
+        return message.reply({ embeds: [waitEmbed] });
+      }
+
+      // All players have acted! Combine all actions and send to AI
       await message.channel.sendTyping();
 
       try {
-        const prompt = `[Oyuncu Hamlesi] Karakter: ${player.charName} (${player.class}) | Eylem: ${actionText}`;
+        // Build combined prompt from all pending actions
+        const actionParts = [];
+        const allAutoRemoved = [];
+        const allUsedAbilities = [];
+
+        session.pendingActions.forEach((actionData, charKey) => {
+          actionParts.push(`Karakter: ${actionData.player.charName} (${actionData.player.class}) | Eylem: ${actionData.actionText}`);
+          if (actionData.autoRemoved.length > 0) {
+            allAutoRemoved.push(...actionData.autoRemoved);
+          }
+          if (actionData.usedAbility) {
+            allUsedAbilities.push({ player: actionData.player, ability: actionData.usedAbility });
+          }
+        });
+
+        const prompt = `[Oyuncu Hamleleri - Tüm Oyuncular]\n${actionParts.join('\n')}\n\nLütfen tüm oyuncuların eylemlerini birlikte değerlendir ve hikayeyi devam ettir.`;
+
         const { responseText } = await module.exports.sendMessageWithFallback(session, prompt);
 
-        // Outside combat: Decrement turn-based cooldowns for all players by 1, skipping the one just cast
+        // Clear pending actions
+        session.pendingActions.clear();
+
+        // Outside combat: Decrement turn-based cooldowns for all players by 1
         if (session.state !== 'combat') {
           session.players.forEach(p => {
             if (!p.cooldowns) p.cooldowns = {};
             for (const key of Object.keys(p.cooldowns)) {
-              if (p.charName.toLowerCase() === player.charName.toLowerCase() && usedAbility && key.toLowerCase() === usedAbility.toLowerCase()) {
-                continue;
-              }
+              // Skip abilities that were just used this turn
+              const justUsed = allUsedAbilities.find(u => 
+                u.player.charName.toLowerCase() === p.charName.toLowerCase() && 
+                u.ability.toLowerCase() === key.toLowerCase()
+              );
+              if (justUsed) continue;
+
               if (typeof p.cooldowns[key] === 'number' && p.cooldowns[key] > 0) {
                 p.cooldowns[key]--;
                 if (p.cooldowns[key] === 0) {
@@ -1162,12 +1242,12 @@ module.exports = {
           });
         }
 
-        // Parse state updates (gold, HP, inventory, combat)
+        // Parse state updates - use triggering player as default for gold/items
         const updates = module.exports.parseStateUpdates(session, responseText, player.charName.toLowerCase());
 
-        // Merge auto-consumed items into updates.removedItems so they are printed in the footer
-        if (autoRemoved.length > 0) {
-          updates.removedItems = [...new Set([...autoRemoved, ...updates.removedItems])];
+        // Merge auto-consumed items from ALL players into updates.removedItems for the footer
+        if (allAutoRemoved.length > 0) {
+          updates.removedItems = [...new Set([...allAutoRemoved, ...updates.removedItems])];
         }
 
         const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)(?:,\s*Zorluk:\s*(\d+))?\]/i;

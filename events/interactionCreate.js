@@ -17,7 +17,7 @@ module.exports = {
         return interaction.reply({ content: '❌ Bu oyun oturumu artık aktif değil!', ephemeral: true });
       }
 
-      if (session.state !== 'playing' || !session.pendingRoll) {
+      if ((session.state !== 'playing' && session.state !== 'combat') || !session.pendingRoll) {
         return interaction.reply({ content: '❌ Şu anda aktif bir zar testi bulunmamaktadır!', ephemeral: true });
       }
 
