@@ -195,11 +195,7 @@ module.exports = {
             }
           }
 
-          session.pendingRoll = {
-            ability: firstRoll.ability,
-            difficulty: firstRoll.difficulty,
-            playerId: rollerCharName
-          };
+          if (!session.pendingRolls) session.pendingRolls = [];
 
           for (const req of updates.requestedRolls) {
             let targetId = playerId;
@@ -221,6 +217,13 @@ module.exports = {
 
             const targetPlayerObj = session.players.get(targetId);
             const labelName = targetPlayerObj ? targetPlayerObj.charName : req.targetChar || 'Herkes';
+
+            // Push to session pendingRolls list
+            session.pendingRolls.push({
+              ability: req.ability,
+              difficulty: req.difficulty,
+              playerId: targetId
+            });
 
             const button = new ButtonBuilder()
               .setCustomId(`dnd_roll_${req.ability}_${targetId}`)
