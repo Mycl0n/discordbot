@@ -1,4 +1,5 @@
 const { Events, ActivityType } = require('discord.js');
+const { prefix } = require('../config.json');
 
 module.exports = {
   name: Events.ClientReady,
@@ -6,9 +7,26 @@ module.exports = {
   execute(client) {
     console.log(`Ready! Logged in as ${client.user.tag}`);
     
-    // Set custom activity status (e.g. Playing a!help)
+    // Rotate activities to make the bot look dynamic and professional
+    const statusList = [
+      { name: `${prefix}help | Mycl0n's Bot`, type: ActivityType.Listening },
+      { name: '🎵 Müzik Dinliyor', type: ActivityType.Playing },
+      { name: '🎮 Eğlence & Oyunlar', type: ActivityType.Playing },
+      { name: `👥 ${client.guilds.cache.reduce((a, g) => a + g.memberCount, 0)} Kullanıcı!`, type: ActivityType.Watching }
+    ];
+
+    let index = 0;
+    setInterval(() => {
+      client.user.setPresence({
+        activities: [statusList[index]],
+        status: 'online',
+      });
+      index = (index + 1) % statusList.length;
+    }, 15000);
+
+    // Initial set
     client.user.setPresence({
-      activities: [{ name: 'a!help', type: ActivityType.Playing }],
+      activities: [statusList[0]],
       status: 'online',
     });
   },
