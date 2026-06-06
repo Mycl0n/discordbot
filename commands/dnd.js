@@ -69,7 +69,7 @@ module.exports = {
           '🏹 **Hirsiz** (El Becerisi +3, Karizma +2, Dayanıklılık -1)',
           '☀️ **Rahip** (Bilgelik +3, Dayanıklılık +2, El Becerisi -1)',
           '',
-          '*Oyuna başlayabilmek için en az **2 oyuncunun** katılması gerekmektedir.*',
+          '*Oyuna başlayabilmek için en az **1 oyuncunun** katılması gerekmektedir.*',
           ` Lobiyi kuran kişi (\`${prefix}dnd oyna\`) yazarak oyunu başlatabilir.`
         ].join('\n'))
         .setTimestamp()
@@ -153,8 +153,8 @@ module.exports = {
         return message.reply('❌ Oyunu sadece lobiyi kuran kişi başlatabilir!');
       }
 
-      if (session.players.size < 2) {
-        return message.reply('❌ D&D oynamak için en az **2 oyuncu** katılmalıdır!');
+      if (session.players.size < 1) {
+        return message.reply('❌ D&D oynamak için en az **1 oyuncu** katılmalıdır!');
       }
 
       if (!process.env.GEMINI_API_KEY) {
@@ -238,7 +238,7 @@ module.exports = {
       } catch (error) {
         console.error('D&D Start Error:', error);
         client.dndGames.delete(guildId);
-        return message.reply('❌ Oyun başlatılırken yapay zekadan hata alındı! Lütfen API anahtarını kontrol edip tekrar deneyin.');
+        return message.reply(`❌ Oyun başlatılırken yapay zekadan hata alındı!\n**Hata Detayı:** \`${error.message}\``);
       }
     }
 
@@ -300,7 +300,7 @@ module.exports = {
 
       } catch (error) {
         console.error('D&D Action Error:', error);
-        return message.reply('❌ Yapay zekadan yanıt alınamadı. Lütfen aksiyonunuzu tekrar yazmayı deneyin.');
+        return message.reply(`❌ Yapay zekadan yanıt alınamadı.\n**Hata Detayı:** \`${error.message}\``);
       }
     }
 
