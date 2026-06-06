@@ -1,16 +1,42 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
 const { prefix } = require('../config.json');
 
 module.exports = {
   name: 'dnd',
   description: 'Yapay zeka zindan ejderi (D&D) Dungeon Master oyunu.',
   async execute(message, args, client) {
+    if (!message.guild) {
+      return message.reply('❌ Bu komut sadece sunucularda kullanılabilir.');
+    }
+
     if (!client.dndGames) {
       client.dndGames = new Map();
     }
 
     const subCommand = args[0]?.toLowerCase();
+    const guildId = message.guild.id;
+    const session = client.dndGames.get(guildId);
+
+    // If there is an active session and the command is sent in a different channel, restrict access
+    if (session && message.channel.id !== session.channelId) {
+      if (['başlat', 'baslat', 'basla', 'start'].includes(subCommand)) {
+        try { await message.delete(); } catch(e) {}
+        const replyMsg = await message.channel.send(`❌ Bu sunucuda zaten aktif bir D&D macerası bulunuyor! Aktif kanal: <#${session.channelId}>`);
+        setTimeout(async () => {
+          try { await replyMsg.delete(); } catch(e) {}
+        }, 5000);
+        return;
+      }
+      
+      // For all other commands, ignore/warn and delete original message
+      try { await message.delete(); } catch(e) {}
+      const replyMsg = await message.channel.send(`❌ D&D komutlarını sadece aktif D&D kanalı olan <#${session.channelId}> içinde kullanabilirsiniz!`);
+      setTimeout(async () => {
+        try { await replyMsg.delete(); } catch(e) {}
+      }, 5000);
+      return;
+    }
 
     if (!subCommand || subCommand === 'help' || subCommand === 'yardim' || subCommand === 'yardım') {
       const embed = new EmbedBuilder()
@@ -36,23 +62,37 @@ module.exports = {
       return message.reply({ embeds: [embed] });
     }
 
-    const guildId = message.guild.id;
-    const session = client.dndGames.get(guildId);
-
     // 1. DND BAŞLAT
     if (subCommand === 'başlat' || subCommand === 'baslat' || subCommand === 'basla' || subCommand === 'start') {
       if (session) {
-        return message.reply('❌ Bu sunucuda zaten aktif bir D&D lobisi veya oyunu bulunuyor!');
+        return message.reply(`❌ Bu sunucuda zaten aktif bir D&D lobisi veya oyunu bulunuyor! Aktif kanal: <#${session.channelId}>`);
       }
+
+      let dndChannel;
+      try {
+        const parentCategory = message.channel.parent;
+        dndChannel = await message.guild.channels.create({
+          name: '🛡️-dnd-macera',
+          type: ChannelType.GuildText,
+          parent: parentCategory ? parentCategory.id : null,
+          topic: 'Yapay Zeka Yönetimli D&D Macerası | Sonlandırmak için a!dnd bitir yazın.',
+        });
+      } catch (error) {
+        console.error('Kanal oluşturma hatası:', error);
+        return message.reply('❌ Yeni D&D kanalı oluşturulurken bir hata oluştu! Lütfen botun "Kanalları Yönet" (Manage Channels) yetkisine sahip olduğundan emin olun.');
+      }
+
+      // Delete original start message to keep chat clean
+      try { await message.delete(); } catch(e) {}
 
       client.dndGames.set(guildId, {
         state: 'lobby',
         creatorId: message.author.id,
-        channelId: message.channel.id,
+        channelId: dndChannel.id,
         players: new Map(), // userId -> character
         chat: null,
         pendingRoll: null,
-        textChannel: message.channel
+        textChannel: dndChannel
       });
 
       const embed = new EmbedBuilder()
@@ -75,7 +115,14 @@ module.exports = {
         .setTimestamp()
         .setFooter({ text: 'Dungeons & Dragons AI' });
 
-      return message.reply({ embeds: [embed] });
+      await dndChannel.send({ embeds: [embed] });
+
+      const infoMsg = await message.channel.send(`🛡️ D&D macerası için yeni bir kanal oluşturuldu: ${dndChannel}`);
+      setTimeout(async () => {
+        try { await infoMsg.delete(); } catch(e) {}
+      }, 5000);
+
+      return;
     }
 
     // 2. DND KATIL
@@ -359,8 +406,20 @@ module.exports = {
         return message.reply('❌ Aktif bir lobi veya oyun bulunmuyor!');
       }
 
+      const gameChannel = session.textChannel;
       client.dndGames.delete(guildId);
-      return message.reply('🏁 D&D oyun oturumu sonlandırıldı ve lobi sıfırlandı. Yeni bir oyun kurabilirsiniz!');
+      
+      await message.reply('🏁 D&D oyun oturumu sonlandırıldı. Bu kanal 10 saniye içinde otomatik olarak silinecektir!');
+      
+      setTimeout(async () => {
+        try {
+          await gameChannel.delete('D&D oyunu bitti.');
+        } catch (error) {
+          console.error('Kanal silme hatası:', error);
+        }
+      }, 10000);
+
+      return;
     }
 
     // 7. DND MODELLER
