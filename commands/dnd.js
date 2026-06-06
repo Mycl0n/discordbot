@@ -47,7 +47,7 @@ module.exports = {
           '',
           `🔹 \`${prefix}dnd başlat\` - Yeni bir macera lobisi oluşturur.`,
           `🔹 \`${prefix}dnd katıl <Karakter Adı> <Sınıf>\` - Karakterinizle lobiye katılır.`,
-          `  *(Sınıflar: Savasci, Buyucu, Hirsiz, Rahip)*`,
+          `  *(Sınıflar: Savasci, Buyucu, Hirsiz, Rahip, Druid, Paladin, Ozan, Barbar, Korucu, Kesis, Warlock)*`,
           `🔹 \`${prefix}dnd oyna\` - Lobideki en az 1 oyuncu hazır olduğunda oyunu ve hikayeyi başlatır.`,
           `🔹 \`${prefix}dnd aksiyon <eylem>\` - Karakterinizin yapmak istediği hareketi yapay zekaya iletir.`,
           `🔹 \`${prefix}dnd durum\` - Oyuncuların Can (HP), envanter ve yetenek durumlarını listeler.`,
@@ -106,11 +106,13 @@ module.exports = {
           'Bu kanala doğrudan karakter adınızı ve sınıfınızı yazın:',
           '👉 **`<Karakter Adı> <Sınıf>`** *(Örn: `Arda Hirsiz`)*',
           '',
-          '**Seçilebilir Sınıflar & Yetenekleri:**',
-          '⚔️ **Savasci** (Kuvvet +3, Dayanıklılık +2, Zeka -1)',
-          '🧙 **Buyucu** (Zeka +3, Bilgelik +2, Kuvvet -1)',
-          '🏹 **Hirsiz** (El Becerisi +3, Karizma +2, Dayanıklılık -1)',
-          '☀️ **Rahip** (Bilgelik +3, Dayanıklılık +2, El Becerisi -1)',
+          '**🎭 Seçilebilir Sınıflar:**',
+          '⚔️ **Savasci** | 🧙 **Buyucu** | 🏹 **Hirsiz** | ☀️ **Rahip**',
+          '🌿 **Druid** | 🛡️ **Paladin** | 🎵 **Ozan** | 🪓 **Barbar**',
+          '🎯 **Korucu** | 🥋 **Kesis** | 😈 **Warlock**',
+          '',
+          '*Detaylı can, modifikatör ve ekipman/yetenek paketiniz katıldığınızda açıklanacaktır.*',
+          '💡 *Başlangıç eşyalarınızın veya yeteneklerinizin ne işe yaradığını sormak için oyun başlamadan önce doğrudan buraya yazabilirsiniz!*',
           '',
           '*Oyuna başlayabilmek için en az **1 oyuncunun** katılması gerekmektedir.*',
           '🚀 Lobiyi kuran kişi bu kanala doğrudan **`başlat`** yazarak oyunu başlatabilir.'
@@ -192,6 +194,55 @@ module.exports = {
         gold = 60;
         inventory = ['Gümüş Topuz', 'Kutsal Sembol', 'Zırhlı Cübbe', '2x Kutsal Su'];
         spells = ['Yaraları İyileştir', 'İlahi Tarama', 'Kutsama'];
+      } else if (['korucu', 'ranger', 'archer', 'okcu', 'okçu'].includes(charClassInput)) {
+        displayClass = 'Korucu';
+        maxHp = 18;
+        modifiers = { 'El Becerisi': 3, Bilgelik: 2, Dayanıklılık: 1, Kuvvet: 0, Zeka: 0, Karizma: -1 };
+        gold = 70;
+        inventory = ['Uzun Yay', 'Kısa Kılıç', 'Deri Zırh', 'Ok Kını (20 Ok)'];
+        spells = ['Avcının Markası', 'Keskin Göz'];
+      } else if (['paladin', 'sovalye', 'şövalye'].includes(charClassInput)) {
+        displayClass = 'Paladin';
+        maxHp = 22;
+        modifiers = { Kuvvet: 3, Karizma: 2, Dayanıklılık: 1, Bilgelik: 0, Zeka: -1, 'El Becerisi': 0 };
+        gold = 60;
+        inventory = ['Büyük Kılıç', 'Kutsal Sembol', 'Zincir Zırh', '1x İyileştirme İksiri'];
+        spells = ['Kutsal Darbe', 'Sağaltıcı Dokunuş'];
+      } else if (['ozan', 'bard'].includes(charClassInput)) {
+        displayClass = 'Ozan';
+        maxHp = 16;
+        modifiers = { Karizma: 3, 'El Becerisi': 2, Zeka: 1, Kuvvet: -1, Bilgelik: 0, Dayanıklılık: 0 };
+        gold = 90;
+        inventory = ['Lut (Müzik Aleti)', 'Hançer', 'Deri Ceket', 'Diplomasi Belgesi'];
+        spells = ['Ozan İlhamı', 'Kakofoni', 'Tasha Kahkahası'];
+      } else if (['barbar', 'barbarian'].includes(charClassInput)) {
+        displayClass = 'Barbar';
+        maxHp = 28;
+        modifiers = { Kuvvet: 3, Dayanıklılık: 3, 'El Becerisi': 1, Zeka: -2, Bilgelik: 0, Karizma: 0 };
+        gold = 40;
+        inventory = ['Çift Elli Savaş Baltası', 'Fırlatma Baltası', 'Kürk Giysiler', 'Matara'];
+        spells = ['Öfke', 'Pervasız Saldırı'];
+      } else if (['kesis', 'keşiş', 'monk'].includes(charClassInput)) {
+        displayClass = 'Keşiş';
+        maxHp = 18;
+        modifiers = { 'El Becerisi': 3, Bilgelik: 2, Dayanıklılık: 1, Kuvvet: 0, Zeka: 0, Karizma: -1 };
+        gold = 30;
+        inventory = ['Ahşap Asa', 'Fırlatma Bıçakları', 'Basit Keşiş Cübbesi', 'Bitki Çayı'];
+        spells = ['Ki Darbesi', 'Sabır Savunması'];
+      } else if (['warlock', 'karabuyucu', 'kara büyücü'].includes(charClassInput)) {
+        displayClass = 'Warlock';
+        maxHp = 16;
+        modifiers = { Karizma: 3, Dayanıklılık: 2, Zeka: 1, Kuvvet: -1, Bilgelik: 0, 'El Becerisi': 0 };
+        gold = 70;
+        inventory = ['Karanlık Asa', 'Kadim Kitap', 'Gölgeli Cübbe', '1x Ruh Taşı'];
+        spells = ['Mistik Patlama', 'Cehennem Azabı', 'Karanlık Görüş'];
+      } else if (['druid'].includes(charClassInput)) {
+        displayClass = 'Druid';
+        maxHp = 18;
+        modifiers = { Bilgelik: 3, Dayanıklılık: 2, Zeka: 1, Kuvvet: -1, 'El Becerisi': 0, Karizma: 0 };
+        gold = 50;
+        inventory = ['Sarmaşık Asa', 'Şifalı Bitki Çantası', 'Deri Cübbe', 'Doğa Sembolü'];
+        spells = ['Doğal Form (Kurt)', 'Diken Büyümesi', 'İyileştirici Esinti'];
       } else {
         displayClass = charClassInput.charAt(0).toUpperCase() + charClassInput.slice(1);
         maxHp = 20;
@@ -225,6 +276,8 @@ module.exports = {
           `💰 **Altın:** ${gold} Altın`,
           `🎒 **Ekipmanlar:** ${inventory.join(', ')}`,
           `🔮 **Yetenekler & Büyüler:** ${spells.join(', ')}`,
+          '',
+          `💡 *Sahip olduğunuz eşya veya yeteneklerin ne işe yaradığını öğrenmek için doğrudan buraya sorabilirsiniz! (Örn: "ilahi tarama ne işe yarar?")*`,
           '',
           `*Lobideki toplam oyuncu sayısı: **${session.players.size}***`
         ].join('\n'))
@@ -569,6 +622,78 @@ module.exports = {
       } catch (error) {
         console.error('ListModels Error:', error);
         return message.reply(`❌ Modeller listelenirken hata oluştu!\n**Hata Detayı:** \`${error.message}\``);
+      }
+
+      // 8. DND LOBI SORU
+      if (subCommand === 'lobi_soru') {
+        if (!session) return;
+        
+        const question = args.slice(1).join(' ');
+        if (!question) return;
+
+        if (!process.env.GEMINI_API_KEY) {
+          return message.reply('❌ Yapay zeka servis anahtarı bulunamadı.');
+        }
+
+        await message.channel.sendTyping();
+
+        try {
+          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+          const lobbySystemInstruction = [
+            'Sen deneyimli bir D&D Zindan Arkadaşı ve Rehberisin. Oyun henüz başlamadı, oyuncular lobide hazırlanıyor.',
+            'Oyuncuların sınıflar, kurallar, başlangıç eşyaları, yetenekler veya büyüler hakkındaki sorularını yanıtla.',
+            'Yanıtların kısa, öz, anlaşılır ve tamamen Türkçe olmalıdır.',
+            'D&D 5e kurallarını ve sistemimizdeki 11 sınıfı (Savaşçı, Büyücü, Hırsız, Rahip, Korucu, Paladin, Ozan, Barbar, Keşiş, Warlock, Druid) temel al.',
+            '',
+            'SİSTEMİMİZDEKİ SINIFLAR, EŞYALAR VE YETENEKLER:',
+            '1. Savaşçı: 24 HP | Ekipman: Çelik Kılıç, Kalkan, Deri Zırh, 2x Meşale, 50 Altın | Yetenekler: İkinci Soluk (1d10 + Seviye can yeniler), Savaş Narası (fazladan aksiyon).',
+            '2. Büyücü: 14 HP | Ekipman: Büyücü Asası, Büyü Kitabı, Basit Cübbe, 1x Sağlık İksiri, 80 Altın | Yetenekler/Büyüler: Alev Oku (1d10 hasar), Sihirli Füze (3x 1d4+1 hasar), Kalkan (+5 Zırh Sınıfı).',
+            '3. Hırsız: 16 HP | Ekipman: 2x Çelik Hançer, Maymuncuk Seti, Hırsız Giysisi, Halat (10m), 120 Altın | Yetenekler: Sinsi Saldırı (+2d6 hasar), Kurnaz Eylem (saklanma/kaçma).',
+            '4. Rahip: 18 HP | Ekipman: Gümüş Topuz, Kutsal Sembol, Zırhlı Cübbe, 2x Kutsal Su, 60 Altın | Yetenekler/Büyüler: Yaraları İyileştir (1d8+Bilgelik iyileştirme), İlahi Tarama (yakındaki kutsal/tekinsiz varlıkları sezer), Kutsama (zarlara +1d4 ekler).',
+            '5. Korucu: 18 HP | Ekipman: Uzun Yay, Kısa Kılıç, Deri Zırh, Ok Kını (20 Ok), 70 Altın | Yetenekler: Avcının Markası (hedefe fazladan hasar), Keskin Göz (dikkat ve algı testlerinde kolaylık).',
+            '6. Paladin: 22 HP | Ekipman: Büyük Kılıç, Kutsal Sembol, Zincir Zırh, 1x İyileştirme İksiri, 60 Altın | Yetenekler: Kutsal Darbe (ekstra kutsal hasar), Sağaltıcı Dokunuş (can iyileştirme).',
+            '7. Ozan: 16 HP | Ekipman: Lut (Müzik Aleti), Hançer, Deri Ceket, Diplomasi Belgesi, 90 Altın | Yetenekler/Büyüler: Ozan İlhamı (arkadaşına zarda bonus verir), Kakofoni (gürültülü hasar büyüsü), Tasha Kahkahası (hedefi gülme krizine sokarak saf dışı bırakır).',
+            '8. Barbar: 28 HP | Ekipman: Çift Elli Savaş Baltası, Fırlatma Baltası, Kürk Giysiler, Matara, 40 Altın | Yetenekler: Öfke (alınan hasarı azaltır, vurulan hasarı artırır), Pervasız Saldırı (avantajlı ama riskli saldırı).',
+            '9. Keşiş: 18 HP | Ekipman: Ahşap Asa, Fırlatma Bıçakları, Basit Keşiş Cübbesi, Bitki Çayı, 30 Altın | Yetenekler: Ki Darbesi (silahsız ekstra hızlı vuruşlar), Sabır Savunması (gelen saldırıları savuşturma).',
+            '10. Warlock: 16 HP | Ekipman: Karanlık Asa, Kadim Kitap, Gölgeli Cübbe, 1x Ruh Taşı, 70 Altın | Yetenekler/Büyüler: Mistik Patlama (güçlü büyü atışı), Cehennem Azabı (tepki olarak alev hasarı), Karanlık Görüş (karanlıkta görme).',
+            '11. Druid: 18 HP | Ekipman: Sarmaşık Asa, Şifalı Bitki Çantası, Deri Cübbe, Doğa Sembolü, 50 Altın | Yetenekler/Büyüler: Doğal Form (Kurt formuna dönüşür), Diken Büyümesi (alanı dikenlerle kaplar), İyileştirici Esinti (can yeniler).'
+          ].join('\n');
+
+          const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+          let responseText = '';
+          let lastError = null;
+
+          for (const modelName of modelsToTry) {
+            try {
+              const model = genAI.getGenerativeModel({
+                model: modelName,
+                systemInstruction: lobbySystemInstruction
+              });
+              const result = await model.generateContent(question);
+              responseText = result.response.text();
+              lastError = null;
+              break;
+            } catch (err) {
+              console.error(`[Lobby Q] Model ${modelName} failed:`, err.message);
+              lastError = err;
+            }
+          }
+
+          if (lastError || !responseText) {
+            throw new Error(lastError ? lastError.message : 'Yapay zeka yanıt üretemedi.');
+          }
+
+          const embed = new EmbedBuilder()
+            .setColor('#5865F2')
+            .setTitle('📖 Lobi Rehberi')
+            .setDescription(responseText.trim())
+            .setTimestamp();
+
+          return message.reply({ embeds: [embed] });
+        } catch (error) {
+          console.error('Lobby Question Error:', error);
+          return message.reply(`❌ Soru yanıtlanırken bir hata oluştu: \`${error.message}\``);
+        }
       }
     }
   },

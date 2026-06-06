@@ -36,7 +36,19 @@ module.exports = {
           const words = trimmedText.split(/\s+/);
           if (words.length >= 2) {
             const classInput = words[words.length - 1].toLowerCase();
-            const classes = ['savasci', 'savaşçı', 'warrior', 'fighter', 'buyucu', 'büyücü', 'mage', 'wizard', 'hirsiz', 'hırsız', 'rogue', 'thief', 'rahip', 'cleric', 'priest'];
+            const classes = [
+              'savasci', 'savaşçı', 'warrior', 'fighter', 
+              'buyucu', 'büyücü', 'mage', 'wizard', 
+              'hirsiz', 'hırsız', 'rogue', 'thief', 
+              'rahip', 'cleric', 'priest',
+              'korucu', 'ranger', 'archer', 'okcu', 'okçu',
+              'paladin', 'sovalye', 'şövalye',
+              'ozan', 'bard',
+              'barbar', 'barbarian',
+              'kesis', 'keşiş', 'monk',
+              'warlock', 'karabuyucu', 'kara büyücü',
+              'druid'
+            ];
             if (classes.includes(classInput)) {
               const charName = words.slice(0, words.length - 1).join(' ');
               try {
@@ -47,7 +59,13 @@ module.exports = {
               return;
             }
           }
-          return; // Ignore other talk in lobby
+          // If it doesn't match starting or joining, route to lobi_soru subcommand
+          try {
+            await dndCommand.execute(message, ['lobi_soru', trimmedText], client);
+          } catch (err) {
+            console.error('Dnd lobi_soru hatası:', err);
+          }
+          return;
         }
 
         // 2. THEME STATE: Set Theme
