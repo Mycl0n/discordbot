@@ -1050,18 +1050,6 @@ module.exports = {
         return message.reply(`❌ Lütfen karakterinizin yapacağı eylemi yazın!\nKullanım: \`${prefix}dnd aksiyon <ne yapmak istiyorsunuz?>\``);
       }
 
-      // Check if this player already submitted an action this round
-      if (session.multiplayerMode !== 'single' && session.pendingActions) {
-        const alreadyActed = Array.from(session.pendingActions.values()).find(a => a.player.userId === message.author.id);
-        if (alreadyActed) {
-          const warnMsg = await message.reply(`❌ **${alreadyActed.player.charName}** zaten bu tur aksiyonunu verdi! Diğer oyuncuların aksiyonunu bekleyin.`);
-          setTimeout(async () => {
-            try { await message.delete(); } catch(e) {}
-            try { await warnMsg.delete(); } catch(e) {}
-          }, 5000);
-          return;
-        }
-      }
 
       let player = null;
       let prefixMatched = false;
@@ -1109,6 +1097,19 @@ module.exports = {
           try { await warnMsg.delete(); } catch(e) {}
         }, 7000);
         return;
+      }
+
+      // Check if this specific character already submitted an action this round
+      if (session.multiplayerMode !== 'single' && session.pendingActions) {
+        const alreadyActed = session.pendingActions.get(player.charName.toLowerCase());
+        if (alreadyActed) {
+          const warnMsg = await message.reply(`❌ **${player.charName}** zaten bu tur aksiyonunu verdi! Diğer oyuncuların aksiyonunu bekleyin.`);
+          setTimeout(async () => {
+            try { await message.delete(); } catch(e) {}
+            try { await warnMsg.delete(); } catch(e) {}
+          }, 5000);
+          return;
+        }
       }
 
       // Find if they are using an ability
