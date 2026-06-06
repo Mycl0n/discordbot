@@ -180,22 +180,10 @@ module.exports = {
           '6. Grup üyelerinin can puanlarını (HP) veya durumlarını zora sokan tuzaklarda veya savaşlarda azaltabilirsin.'
         ].join('\n');
 
-        const model = genAI.getGenerativeModel({
-          model: 'gemini-1.5-flash',
-          systemInstruction: systemInstruction
-        });
-
         // Format player list for AI
         const playerDetails = Array.from(session.players.values()).map((p, idx) => {
           return `${idx + 1}. Oyuncu: ${p.username} | Karakteri: ${p.charName} (Sınıfı: ${p.class}, Canı: ${p.hp}/${p.maxHp})`;
         }).join('\n');
-
-        const chat = model.startChat({
-          history: []
-        });
-
-        session.chat = chat;
-        session.state = 'playing';
 
         const initialPrompt = [
           'Macera Başlıyor! Oyuncularımız ve karakterleri şunlar:',
@@ -204,8 +192,40 @@ module.exports = {
           'Lütfen oyuncuları fantastik bir dünyada (örneğin karanlık bir zindan girişi, gizemli bir orman patikası veya tekinsiz bir taverna) başlat. Ortamı anlat ve ilk hamlelerini sor.'
         ].join('\n');
 
-        const result = await chat.sendMessage(initialPrompt);
-        const responseText = result.response.text();
+        const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro'];
+        let chat = null;
+        let responseText = '';
+        let modelUsed = '';
+        let lastError = null;
+
+        for (const modelName of modelsToTry) {
+          try {
+            console.log(`[DEBUG] Attempting D&D start with model: ${modelName}`);
+            const model = genAI.getGenerativeModel({
+              model: modelName,
+              systemInstruction: systemInstruction
+            });
+            chat = model.startChat({ history: [] });
+            
+            const result = await chat.sendMessage(initialPrompt);
+            responseText = result.response.text();
+            modelUsed = modelName;
+            lastError = null;
+            break; // Success! Break the loop
+          } catch (err) {
+            console.error(`[DEBUG] Model ${modelName} failed:`, err.message);
+            lastError = err;
+            chat = null;
+          }
+        }
+
+        if (lastError || !chat) {
+          throw new Error(lastError ? lastError.message : 'Kullanılabilir hiçbir yapay zeka modeli bulunamadı.');
+        }
+
+        session.chat = chat;
+        session.modelUsed = modelUsed;
+        session.state = 'playing';
 
         // Check if there is an initial roll check (unlikely but possible)
         const rollRegex = /\[Zar:\s*(Kuvvet|Dayanıklılık|El Becerisi|Zeka|Bilgelik|Karizma)\]/i;
@@ -338,6 +358,30 @@ module.exports = {
 
       client.dndGames.delete(guildId);
       return message.reply('🏁 D&D oyun oturumu sonlandırıldı ve lobi sıfırlandı. Yeni bir oyun kurabilirsiniz!');
+    }
+
+    // 7. DND MODELLER
+    if (subCommand === 'modeller' || subCommand === 'models') {
+      if (!process.env.GEMINI_API_KEY) {
+        return message.reply('❌ Sistemde **GEMINI_API_KEY** bulunamadı!');
+      }
+      try {
+        await message.channel.sendTyping();
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const result = await genAI.listModels();
+        const models = result.models.map(m => `\`${m.name}\` (Supported: ${m.supportedGenerationMethods.join(', ')})`);
+        
+        const embed = new EmbedBuilder()
+          .setColor('#5865F2')
+          .setTitle('🤖 Kullanılabilir Yapay Zeka Modelleri')
+          .setDescription(models.join('\n').slice(0, 4000))
+          .setTimestamp();
+          
+        return message.reply({ embeds: [embed] });
+      } catch (error) {
+        console.error('ListModels Error:', error);
+        return message.reply(`❌ Modeller listelenirken hata oluştu!\n**Hata Detayı:** \`${error.message}\``);
+      }
     }
   }
 };
