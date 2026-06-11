@@ -1541,6 +1541,21 @@ module.exports = {
       return message.reply({ embeds: [rollEmbed], components: rows });
     }
 
+    // 5.3 DND ZAR_IPTAL (Bekleyen zarları iptal etme)
+    if (subCommand === 'zar_iptal' || subCommand === 'zar_sil' || subCommand === 'iptal') {
+      if (!session) {
+        return message.reply('❌ Aktif bir lobi veya oyun bulunmuyor!');
+      }
+      
+      if (session.pendingRolls && session.pendingRolls.length > 0) {
+        const count = session.pendingRolls.length;
+        session.pendingRolls = [];
+        return message.reply(`✅ **${count}** adet bekleyen zar testi başarıyla iptal edildi! Artık oyuna bugsız devam edebilirsiniz.`);
+      } else {
+        return message.reply('❌ Şu anda zaten bekleyen bir zar testi bulunmuyor.');
+      }
+    }
+
     // 5.5 DND DİNLEN
     if (subCommand === 'dinlen' || subCommand === 'rest') {
       if (!session || session.state !== 'playing') {

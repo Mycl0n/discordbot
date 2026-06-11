@@ -109,78 +109,96 @@ module.exports = {
         });
       } catch (e) {
         console.error('Failed to update button component state:', e);
-        await interaction.editReply({ components: [] });
       }
 
       // Send roll announcement to the text channel
       await session.textChannel.send({ embeds: [rollEmbed] });
 
-      // Send typing status while AI processes
+      // Calculate XP & Level Up for this player right away
+      let xpGained = total >= (activeRoll?.difficulty || 10) ? 5 : 2;
+      if (d20 === 20) xpGained = 10;
+      player.xp = (player.xp || 0) + xpGained;
+
+      let nextLevelXp = 25;
+      if (player.level === 2) nextLevelXp = 60;
+      if (player.level === 3) nextLevelXp = 120;
+
+      let levelUpMessage = '';
+      if (player.xp >= nextLevelXp) {
+        player.level = (player.level || 1) + 1;
+        player.xp = player.xp - nextLevelXp;
+
+        let hpIncrease = 5;
+        if (player.class === 'Savaşçı') hpIncrease = 6;
+        else if (player.class === 'Büyücü') hpIncrease = 4;
+        else if (player.class === 'Hırsız') hpIncrease = 5;
+        else if (player.class === 'Rahip') hpIncrease = 5;
+
+        player.maxHp = (player.maxHp || 20) + hpIncrease;
+        player.hp = player.maxHp;
+
+        const dndCommand = client.commands.get('dnd');
+        const classAbilities = dndCommand.CLASS_ABILITIES?.[player.class] || {};
+        const levelAbilities = classAbilities[player.level] || [];
+        
+        let newSpellMessage = '';
+        if (levelAbilities.length > 0) {
+          newSpellMessage = `\n🔮 **Yeni Yetenek(ler) Açıldı:** ` + levelAbilities.map(a => `**${a.name}** (*${a.desc}*)`).join(', ');
+        }
+
+        levelUpMessage = `\n\n🌟 **TEBRİKLER! SEVİYE ATLADI!** 🌟\n**${player.charName}** artık **Seviye ${player.level}**! Maksimum Canı **${player.maxHp}** HP'ye yükseldi!${newSpellMessage}`;
+      }
+
+      // Collect the roll result in session
+      if (!session.completedRolls) session.completedRolls = [];
+      session.completedRolls.push({
+        charName: player.charName,
+        class: player.class,
+        ability: ability,
+        d20: d20,
+        total: total,
+        difficulty: activeRoll?.difficulty || 10,
+        levelUpMessage: levelUpMessage
+      });
+
+      // If there are still pending rolls, DO NOT call AI yet!
+      if (session.pendingRolls && session.pendingRolls.length > 0) {
+        return;
+      }
+
+      // All pending rolls are completed! Trigger AI now.
       await session.textChannel.sendTyping();
 
       try {
-        const difficulty = activeRoll?.difficulty || 10;
-
-        // Feed the roll result to the AI DM
-        let prompt = `[SİSTEM MESAJI]: ${player.charName} (${player.class}) ${ability} zarı attı. `;
-        prompt += `Doğal zar: ${d20}, Toplam sonuç: ${total} (Zorluk Sınırı/DC: ${difficulty}). `;
-        if (d20 === 20) prompt += 'Kritik başarı (Natural 20) elde etti! ';
-        if (d20 === 1) prompt += 'Kritik başarısızlık (Natural 1) elde etti! ';
-        if (total >= difficulty) {
-          prompt += 'Eylem BAŞARILI oldu. ';
-        } else {
-          prompt += 'Eylem BAŞARISIZ oldu. ';
-        }
-        prompt += 'Lütfen bu zar sonucuna göre hikayeyi devam ettir, sonucunu anlat.';
-
         const dndCommand = client.commands.get('dnd');
+        
+        // Build combined prompt from all completed rolls
+        const rollDetails = session.completedRolls.map(r => {
+          let outcome = r.total >= r.difficulty ? 'BAŞARILI' : 'BAŞARISIZ';
+          let critText = '';
+          if (r.d20 === 20) critText = ' (Kritik Başarı - Natural 20)';
+          if (r.d20 === 1) critText = ' (Kritik Başarısızlık - Natural 1)';
+          return `- ${r.charName} (${r.class}) ${r.ability} zarı attı: Doğal zar ${r.d20}, Toplam sonuç ${r.total} (DC ${r.difficulty}). Eylem ${outcome} oldu${critText}.`;
+        }).join('\n');
+
+        let prompt = `[SİSTEM MESAJI - ZAR SONUÇLARI]:\n${rollDetails}\n\nLütfen tüm bu zar sonuçlarını birlikte değerlendir, hikayeyi buna göre devam ettir ve sonucu anlat.`;
+
         const { responseText } = await dndCommand.sendMessageWithFallback(session, prompt);
 
         // Parse state updates
         const updates = dndCommand.parseStateUpdates(session, responseText, playerId);
 
-        // Calculate XP & Level Up
-        let xpGained = total >= difficulty ? 5 : 2;
-        if (d20 === 20) xpGained = 10;
+        // Gather all level up messages
+        const jointLevelUps = session.completedRolls.map(r => r.levelUpMessage).filter(msg => msg !== '').join('\n');
 
-        player.xp = (player.xp || 0) + xpGained;
-
-        let nextLevelXp = 25;
-        if (player.level === 2) nextLevelXp = 60;
-        if (player.level === 3) nextLevelXp = 120;
-
-        let levelUpMessage = '';
-        if (player.xp >= nextLevelXp) {
-          player.level = (player.level || 1) + 1;
-          player.xp = player.xp - nextLevelXp;
-
-          let hpIncrease = 5;
-          if (player.class === 'Savaşçı') hpIncrease = 6;
-          else if (player.class === 'Büyücü') hpIncrease = 4;
-          else if (player.class === 'Hırsız') hpIncrease = 5;
-          else if (player.class === 'Rahip') hpIncrease = 5;
-
-          player.maxHp = (player.maxHp || 20) + hpIncrease;
-          player.hp = player.maxHp;
-
-          // Check if any spells are unlocked at this level
-          const dndCommand = client.commands.get('dnd');
-          const classAbilities = dndCommand.CLASS_ABILITIES?.[player.class] || {};
-          const levelAbilities = classAbilities[player.level] || [];
-          
-          let newSpellMessage = '';
-          if (levelAbilities.length > 0) {
-            newSpellMessage = `\n🔮 **Yeni Yetenek(ler) Açıldı:** ` + levelAbilities.map(a => `**${a.name}** (*${a.desc}*)`).join(', ');
-          }
-
-          levelUpMessage = `\n\n🌟 **TEBRİKLER! SEVİYE ATLADI!** 🌟\n**${player.charName}** artık **Seviye ${player.level}**! Maksimum Canı **${player.maxHp}** HP'ye yükseldi!${newSpellMessage}`;
-        }
+        // Clear completed rolls buffer
+        session.completedRolls = [];
 
         // Check if the AI wants another roll check (using newly parsed requestedRolls array)
         const replyEmbed = new EmbedBuilder()
           .setColor(session.state === 'combat' ? '#ED4245' : '#5865F2')
           .setTitle(session.state === 'combat' ? '⚔️ Savaş - Dungeon Master' : '🛡️ Dungeon Master')
-          .setDescription(updates.responseText.trim() + levelUpMessage)
+          .setDescription(updates.responseText.trim() + jointLevelUps)
           .setTimestamp();
 
         // Print changes footer if any
@@ -198,25 +216,6 @@ module.exports = {
         if (updates.requestedRolls && updates.requestedRolls.length > 0) {
           const row = new ActionRowBuilder();
           
-          // Use the first roll request for session.pendingRoll compatibility
-          const firstRoll = updates.requestedRolls[0];
-          let rollerCharName = playerId; // default to previous roller
-          if (firstRoll.targetChar) {
-            for (const [id, p] of session.players) {
-              if (p.charName.toLowerCase() === firstRoll.targetChar.toLowerCase()) {
-                rollerCharName = p.charName.toLowerCase();
-                break;
-              }
-            }
-          } else {
-            for (const [id, p] of session.players) {
-              if (updates.responseText.toLowerCase().includes(p.charName.toLowerCase())) {
-                rollerCharName = p.charName.toLowerCase();
-                break;
-              }
-            }
-          }
-
           if (!session.pendingRolls) session.pendingRolls = [];
 
           for (const req of updates.requestedRolls) {
@@ -272,7 +271,7 @@ module.exports = {
             session.state = 'playing';
             session.combat = null;
             await session.textChannel.send('🏆 **Savaş Bitti! Düşmanlar temizlendi.**');
-          } else if (!match) {
+          } else {
             await dndCommand.advanceTurn(session);
           }
         }

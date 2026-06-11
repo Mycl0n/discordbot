@@ -179,6 +179,15 @@ module.exports = {
             return;
           }
 
+          if (['zar iptal', 'zar_iptal', 'zar sil', 'zar_sil', 'iptal'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['zar_iptal'], client);
+            } catch (err) {
+              console.error('Dnd zar_iptal hatası:', err);
+            }
+            return;
+          }
+
           if (session.pendingRolls && session.pendingRolls.length > 0) {
             const remainingNames = session.pendingRolls.map(r => {
               const targetPlayer = session.players.get(r.playerId);
