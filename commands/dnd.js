@@ -1475,6 +1475,72 @@ module.exports = {
       return message.reply({ embeds: [embed] });
     }
 
+    // 5.25 DND ZAR_AT (Manuel Zar Butonları Oluşturma)
+    if (subCommand === 'zar_at' || subCommand === 'zar') {
+      if (!session) {
+        return message.reply('❌ Aktif bir lobi veya oyun bulunmuyor!');
+      }
+      if (session.state !== 'playing' && session.state !== 'combat') {
+        return message.reply('❌ Oyun henüz başlatılmamış!');
+      }
+
+      const abilityInput = args[1];
+      const difficultyInput = args[2];
+
+      const validAbilities = ['Kuvvet', 'Dayanıklılık', 'El Becerisi', 'Zeka', 'Bilgelik', 'Karizma'];
+      let chosenAbility = 'Kuvvet';
+      if (abilityInput) {
+        const found = validAbilities.find(a => normalizeTurkish(a) === normalizeTurkish(abilityInput));
+        if (found) chosenAbility = found;
+      }
+
+      let chosenDC = 10;
+      if (difficultyInput && !isNaN(difficultyInput)) {
+        chosenDC = parseInt(difficultyInput);
+      }
+
+      if (!session.pendingRolls) session.pendingRolls = [];
+
+      const rollEmbed = new EmbedBuilder()
+        .setColor('#FEE75C')
+        .setTitle('🎲 Manuel Zar Testi')
+        .setDescription(`**${chosenAbility}** testi talep edildi (Zorluk Derecesi: DC ${chosenDC}).\nLütfen aşağıdaki kendi karakterinize ait butona tıklayarak zarı atın!`)
+        .setTimestamp();
+
+      const rows = [];
+      let currentRow = new ActionRowBuilder();
+      let buttonCount = 0;
+
+      session.players.forEach((p, playerId) => {
+        // Add to session pendingRolls so interaction handler can process it
+        session.pendingRolls.push({
+          ability: chosenAbility,
+          difficulty: chosenDC,
+          playerId: playerId
+        });
+
+        const button = new ButtonBuilder()
+          .setCustomId(`dnd_roll_${chosenAbility}_${playerId}`)
+          .setLabel(`🎲 ${p.charName} (${chosenAbility} DC ${chosenDC})`)
+          .setStyle(ButtonStyle.Primary);
+
+        currentRow.addComponents(button);
+        buttonCount++;
+
+        if (buttonCount === 5) {
+          rows.push(currentRow);
+          currentRow = new ActionRowBuilder();
+          buttonCount = 0;
+        }
+      });
+
+      if (buttonCount > 0) {
+        rows.push(currentRow);
+      }
+
+      return message.reply({ embeds: [rollEmbed], components: rows });
+    }
+
     // 5.5 DND DİNLEN
     if (subCommand === 'dinlen' || subCommand === 'rest') {
       if (!session || session.state !== 'playing') {

@@ -85,10 +85,32 @@ module.exports = {
         .setDescription(rollResultText)
         .setTimestamp();
 
-      // Disable the button
-      await interaction.editReply({
-        components: []
-      });
+      // Update components on the message: disable or remove the clicked button
+      try {
+        const messageComponents = interaction.message.components.map(row => {
+          const newRow = ActionRowBuilder.from(row);
+          newRow.components.forEach(comp => {
+            if (comp.data.custom_id === customId) {
+              // We can either disable it or remove it. Let's disable it and change style to secondary
+              comp.setDisabled(true);
+              comp.setStyle(ButtonStyle.Secondary);
+            }
+          });
+          return newRow;
+        });
+
+        // If no pending rolls remain, or all buttons are disabled, we can clear components or leave them disabled
+        const allDisabled = messageComponents.every(row => 
+          row.components.every(comp => comp.data.disabled)
+        );
+
+        await interaction.editReply({
+          components: allDisabled ? [] : messageComponents
+        });
+      } catch (e) {
+        console.error('Failed to update button component state:', e);
+        await interaction.editReply({ components: [] });
+      }
 
       // Send roll announcement to the text channel
       await session.textChannel.send({ embeds: [rollEmbed] });
