@@ -758,10 +758,10 @@ module.exports = {
       return message.reply([
         '👥 **Oyun Modu Seçimi**',
         'Lütfen oyunu oynama biçiminizi seçin:',
-        '1️⃣ **Tek Hesap / Tek Karakter (single)**: Her Discord kullanıcısı sadece kendi karakterini kontrol eder. Çoklu oyuncu bekleme sistemi pasif olur (diğer oyuncuların yazmasını beklemeden hızlı akar).',
-        '2️⃣ **Çoklu Karakter / Ortak Hesap (multi)**: Tek bir hesap üzerinden birden fazla karakter kontrol edilebilir. Çoklu oyuncu aksiyon senkronizasyonu aktif olur.',
+        '1️⃣ **Çoklu Karakter / Ortak Hesap (multi)**: Tek veya birden fazla hesap üzerinden birden fazla karakter kontrol edilebilir. Çoklu oyuncu aksiyon senkronizasyonu aktif olur (herkesin yazması beklenir).',
+        '2️⃣ **Tek Hesap / Tek Karakter (single)**: Her Discord kullanıcısı sadece kendi karakterini kontrol eder. Çoklu oyuncu bekleme sistemi pasif olur (diğer oyuncuların yazmasını beklemeden hızlı akar).',
         '',
-        '👉 Lütfen bu kanala doğrudan **1** (veya **tek**) ya da **2** (veya **çoklu**) yazarak seçim yapın.'
+        '👉 Lütfen bu kanala doğrudan **1** (veya **çoklu**) ya da **2** (veya **tek**) yazarak seçim yapın.'
       ].join('\n'));
     }
 

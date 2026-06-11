@@ -72,22 +72,22 @@ module.exports = {
 
         // 1.25. MULTIPLAYER STATE: Select Multiplayer Mode
         if (session.state === 'selecting_multiplayer') {
-          if (['1', 'tek', 'single'].includes(lowerText)) {
-            try {
-              await dndCommand.execute(message, ['sec_multiplayer', 'single'], client);
-            } catch (err) {
-              console.error('Dnd sec_multiplayer hatası:', err);
-            }
-            return;
-          } else if (['2', 'coklu', 'çoklu', 'multi'].includes(lowerText)) {
+          if (['1', 'coklu', 'çoklu', 'multi'].includes(lowerText)) {
             try {
               await dndCommand.execute(message, ['sec_multiplayer', 'multi'], client);
             } catch (err) {
               console.error('Dnd sec_multiplayer hatası:', err);
             }
             return;
+          } else if (['2', 'tek', 'single'].includes(lowerText)) {
+            try {
+              await dndCommand.execute(message, ['sec_multiplayer', 'single'], client);
+            } catch (err) {
+              console.error('Dnd sec_multiplayer hatası:', err);
+            }
+            return;
           } else {
-            const warnMsg = await message.reply('❌ Lütfen sadece **1** (Tek Hesap) veya **2** (Çoklu Karakter) yazarak seçim yapın.');
+            const warnMsg = await message.reply('❌ Lütfen sadece **1** (Çoklu Karakter) veya **2** (Tek Hesap) yazarak seçim yapın.');
             setTimeout(async () => {
               try { await message.delete(); } catch(e) {}
               try { await warnMsg.delete(); } catch(e) {}
